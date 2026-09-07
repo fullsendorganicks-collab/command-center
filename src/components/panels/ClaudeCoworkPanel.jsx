@@ -5,7 +5,7 @@ import { useFocus } from '../../context/FocusContext'
 import { useClaudeChat, getLastSeenAt, markSeenNow } from '../../hooks/useClaudeChat'
 import ClaudeChatView from './ClaudeChatView'
 import { generateBriefing, briefingToPrompt } from '../../lib/briefing'
-import { anthropicConfigured } from '../../lib/anthropic'
+import { useWorkspace } from '../../context/WorkspaceContext'
 
 const TABS = [
   { id: 'claude', label: 'Claude', icon: Bot },
@@ -34,14 +34,15 @@ function useThreads() {
 }
 
 function ClaudeTab() {
+  const { workspaceId } = useWorkspace()
   const { threads, active, activeId, setActiveId, newThread, updateActiveMessages } = useThreads()
-  const chat = useClaudeChat(active.messages)
+  const chat = useClaudeChat(active.messages, workspaceId)
 
   useEffect(() => { updateActiveMessages(chat.messages) }, [chat.messages]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // proactive briefing on first open of this session
   useEffect(() => {
-    if (!anthropicConfigured) return
+    if (!workspaceId) return
     if (chat.messages.length > 0) return
     const lastSeen = getLastSeenAt()
     const briefing = generateBriefing({ lastSeenAt: lastSeen })
@@ -111,6 +112,7 @@ function LaunchTab({ label, description, deepLink, sessions }) {
 
 export default function ClaudeCoworkPanel() {
   const { focusedId, focus } = useFocus()
+  const { workspaceId } = useWorkspace()
   const isFocused = focusedId === 'claude-cowork'
   const [tab, setTab] = useState('claude')
 
@@ -118,7 +120,7 @@ export default function ClaudeCoworkPanel() {
     return (
       <HudCard id="claude-cowork" title="Claude / Code / Cowork" icon={Bot} accentClass="accent-glow" span="md:col-span-2 xl:col-span-3">
         <div className="text-sm text-body-c mb-3">
-          {anthropicConfigured ? 'Chat, launch Claude Code, or check Cowork — click to expand.' : 'Add your Anthropic API key to enable the Claude tab.'}
+          {workspaceId ? 'Chat, launch Claude Code, or check Cowork — click to expand.' : 'Add your Anthropic API key in Settings to enable the Claude tab.'}
         </div>
         <button
           onClick={() => focus('claude-cowork')}

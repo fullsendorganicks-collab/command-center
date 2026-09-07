@@ -3,15 +3,16 @@ import { Bot, X } from 'lucide-react'
 import { useClaudeChat, getLastSeenAt, markSeenNow } from '../../hooks/useClaudeChat'
 import ClaudeChatView from '../panels/ClaudeChatView'
 import { generateBriefing, briefingToPrompt } from '../../lib/briefing'
-import { anthropicConfigured } from '../../lib/anthropic'
+import { useWorkspace } from '../../context/WorkspaceContext'
 
 export default function FloatingChatBubble() {
+  const { workspaceId } = useWorkspace()
   const [open, setOpen] = useState(false)
-  const chat = useClaudeChat()
+  const chat = useClaudeChat([], workspaceId)
   const [briefed, setBriefed] = useState(false)
 
   useEffect(() => {
-    if (!open || briefed || !anthropicConfigured) return
+    if (!open || briefed || !workspaceId) return
     setBriefed(true)
     if (chat.messages.length === 0) {
       const lastSeen = getLastSeenAt()

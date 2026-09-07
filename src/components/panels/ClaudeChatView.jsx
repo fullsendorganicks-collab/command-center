@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Mic, MicOff, Volume2, VolumeX, Send, Loader2 } from 'lucide-react'
 import { getSpeechRecognition, speechRecognitionSupported, speechSynthesisSupported, speak, stopSpeaking } from '../../lib/voice'
-import { anthropicConfigured } from '../../lib/anthropic'
 
 /**
  * Reusable chat message list + composer, with voice input/output.
@@ -67,7 +66,7 @@ export default function ClaudeChatView({ messages, send, sending, error, compact
       <div ref={scrollRef} className={`flex-1 overflow-y-auto space-y-3 pr-1 ${compact ? 'max-h-72' : ''}`}>
         {messages.length === 0 && (
           <div className="text-xs text-faint-c text-center py-8">
-            {anthropicConfigured ? 'Ask Claude anything to get started.' : 'Add VITE_ANTHROPIC_API_KEY in .env.local to enable chat.'}
+            Ask Claude anything to get started. If you haven't added an API key yet, add one in Settings first.
           </div>
         )}
         {messages.map((m, i) => (

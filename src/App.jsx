@@ -11,6 +11,7 @@ import SocialPage from './components/panels/SocialPage'
 import SettingsPage from './components/panels/SettingsPage'
 import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { WorkspaceProvider } from './context/WorkspaceContext'
 import { HEALTH_SUMMARY, CONNECTIONS } from './data/mockData'
 
 const PAGES = {
@@ -69,7 +70,11 @@ function Gate() {
     return <div className="min-h-screen flex items-center justify-center text-faint-c text-sm">Loading…</div>
   }
   if (!user) return <LoginScreen />
-  return <AppShell />
+  return (
+    <WorkspaceProvider>
+      <AppShell />
+    </WorkspaceProvider>
+  )
 }
 
 export default function App() {

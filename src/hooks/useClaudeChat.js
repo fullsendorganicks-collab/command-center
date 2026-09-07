@@ -16,7 +16,7 @@ export function markSeenNow() {
  * Supabase (cc_conversations / cc_messages) hooks in via onPersist once
  * auth exists — kept optional so this works standalone today.
  */
-export function useClaudeChat(initialMessages = []) {
+export function useClaudeChat(initialMessages = [], workspaceId = null) {
   const [messages, setMessages] = useState(initialMessages)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState(null)
@@ -24,13 +24,17 @@ export function useClaudeChat(initialMessages = []) {
 
   const send = useCallback(async (text, { system } = {}) => {
     if (!text.trim()) return
+    if (!workspaceId) {
+      setError('No workspace loaded yet — try again in a moment.')
+      return
+    }
     const userMsg = { role: 'user', content: text }
     const nextMessages = [...messages, userMsg]
     setMessages(nextMessages)
     setSending(true)
     setError(null)
     try {
-      const reply = await sendToClaude(nextMessages, { system })
+      const reply = await sendToClaude(nextMessages, { system, workspaceId })
       setMessages(m => [...m, { role: 'assistant', content: reply }])
       return reply
     } catch (e) {
@@ -39,7 +43,7 @@ export function useClaudeChat(initialMessages = []) {
     } finally {
       setSending(false)
     }
-  }, [messages])
+  }, [messages, workspaceId])
 
   const reset = useCallback(() => setMessages([]), [])
 

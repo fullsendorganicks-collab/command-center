@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X, Sparkles, Send } from 'lucide-react'
 import { draftWithClaude } from '../../lib/anthropic'
+import { useWorkspace } from '../../context/WorkspaceContext'
 
 /**
  * Generic compose modal used for both email replies and social post drafts.
@@ -8,6 +9,7 @@ import { draftWithClaude } from '../../lib/anthropic'
  * explicit user click. Nothing here ever auto-sends or auto-posts.
  */
 export default function ComposeModal({ type, context, onClose }) {
+  const { workspaceId } = useWorkspace()
   const [draft, setDraft] = useState('')
   const [drafting, setDrafting] = useState(false)
   const [error, setError] = useState(null)
@@ -22,7 +24,7 @@ export default function ComposeModal({ type, context, onClose }) {
       const prompt = isEmail
         ? `Draft a short, professional reply to this email.\nFrom: ${context.sender}\nSubject: ${context.subject}\nPreview: ${context.preview}\n\nWrite only the reply body, no subject line.`
         : `Draft a short, engaging ${context.platform} caption/post for the account "${context.label}". Keep it on-brand and concise.`
-      const text = await draftWithClaude(prompt)
+      const text = await draftWithClaude(prompt, { workspaceId })
       setDraft(text)
     } catch (e) {
       setError(e.message || 'Could not reach Claude — check your API key in Settings.')

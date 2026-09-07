@@ -21,7 +21,29 @@ export function AuthProvider({ children }) {
 
   async function signInWithMagicLink(email) {
     if (!supabaseConfigured) throw new Error('Supabase is not configured yet.')
-    const { error } = await supabase.auth.signInWithOtp({ email })
+    // Explicitly send people back to wherever this app is actually running
+    // (window.location.origin) instead of relying on Supabase's Site URL
+    // default, which is localhost until changed in the dashboard — without
+    // this, the magic link always redirects to localhost regardless of
+    // where it was requested from.
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.origin },
+    })
+    if (error) throw error
+  }
+
+  async function signInWithGoogle() {
+    if (!supabaseConfigured) throw new Error('Supabase is not configured yet.')
+    // No password to set or manage — Google handles auth entirely, and
+    // Supabase completes the handshake server-side via the redirect URI
+    // registered in Google Cloud Console. Same origin-based redirect
+    // reasoning as the magic-link fix: always send back to wherever this
+    // app is actually running, not a hardcoded localhost default.
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    })
     if (error) throw error
   }
 
@@ -31,7 +53,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithMagicLink, signOut, configured: supabaseConfigured }}>
+    <AuthContext.Provider value={{ user, loading, signInWithMagicLink, signInWithGoogle, signOut, configured: supabaseConfigured }}>
       {children}
     </AuthContext.Provider>
   )

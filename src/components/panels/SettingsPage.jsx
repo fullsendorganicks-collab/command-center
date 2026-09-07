@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { Palette, Plug, KeyRound } from 'lucide-react'
 import ThemeSettingsPanel from './ThemeSettingsPanel'
 import IntegrationsMarketplace from './IntegrationsMarketplace'
+import ApiKeysSettings from './ApiKeysSettings'
 
 const TABS = [
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'integrations', label: 'Integrations', icon: Plug },
-  { id: 'account', label: 'Account', icon: KeyRound },
+  { id: 'account', label: 'API Keys', icon: KeyRound },
 ]
 
 export default function SettingsPage() {
@@ -36,11 +37,7 @@ export default function SettingsPage() {
       </div>
       {tab === 'appearance' && <ThemeSettingsPanel />}
       {tab === 'integrations' && <IntegrationsMarketplace />}
-      {tab === 'account' && (
-        <div className="text-sm text-body-c">
-          Account management (email, password, workspace members) will live here once auth is fully wired.
-        </div>
-      )}
+      {tab === 'account' && <ApiKeysSettings />}
     </div>
   )
 }
