@@ -4,24 +4,26 @@ _Written Sept 2026. Supersedes ad-hoc fixes — this is the ordered plan._
 
 ## Tier split (confirmed Sept 2026) — the thing that keeps this on track
 
-The $2,500 lite tier and the $6k+/month full tier are NOT the same
-product at different prices. Write access (publish/upload/edit on a
-client's live site or store) is most of the engineering + support cost,
-so it can't be baseline — it's what makes the full tier worth $6k+/mo.
+Pricing itself is NOT decided ($2,500 / $6k were only illustrative
+examples, not committed numbers). What IS confirmed: lite and full tier
+are not the same product at different prices — they're genuinely
+different capability sets, split along read-only vs. write-capable,
+because that split is what actually drives engineering cost and risk,
+independent of whatever the eventual price tags turn out to be.
 
-- **Lite ($2,500 one-time)**: real READ-ONLY connections only — actual
-  Gmail unread count, actual GA4 numbers, actual social follower counts,
-  actual Shopify orders/inventory view, actual WordPress site stats.
-  No publish, no upload, no edit. This alone legitimately kills
-  tab-switching for someone who just checks numbers all day. Low risk,
-  near-zero ongoing cost to Nick (client brings their own API keys where
-  applicable, e.g. Anthropic).
-- **Full ($6k+ setup + monthly)**: lite tier + WRITE capabilities —
+- **Lite tier**: real READ-ONLY connections only — actual Gmail unread
+  count + real subjects/senders, actual GA4 numbers, actual social
+  follower counts, actual Shopify orders/inventory view, actual
+  WordPress site stats. No publish, no upload, no edit, no send. This
+  alone legitimately kills tab-switching for someone who just checks
+  things all day. Low risk, near-zero ongoing cost to Nick (client
+  brings their own API keys where applicable, e.g. Anthropic).
+- **Full tier**: lite tier + WRITE capabilities — send/reply email,
   publish blog posts, upload product photos, edit product listings,
   post to social directly from the dashboard. This is the "mini website
-  for their main site" vision. Justifies the monthly fee because Nick
-  owns real ongoing risk here (a bad write hits a live store) and real
-  support burden (OAuth token expiry, API changes).
+  for their main site" vision. Justifies a recurring fee because Nick
+  owns real ongoing risk here (a bad write hits a live store or a real
+  inbox) and real support burden (OAuth token expiry, API changes).
 
 **Rule going forward: every new integration ships its READ scope first,
 proven working, before its WRITE scope is even started.** Don't let
@@ -67,11 +69,25 @@ Google OAuth app already exists (Sept 2026) for login. Extending it to
 these read scopes is the SAME app, more scopes — no new app needed.
 - [ ] Server-side OAuth token exchange (edge function — never in browser)
 - [ ] Store refresh tokens encrypted (Vault, same pattern as Anthropic key)
-- [ ] Gmail: real unread count + real recent senders in Inbox panel
+- [ ] Gmail: real unread count + real recent senders/subjects in Inbox panel (READ)
 - [ ] GA4: real sessions/users/bounce/engagement in Properties panel
 - [ ] Search Console: replace the one mock "Search Console" health row
 - [ ] Token refresh + expiry handling — this is what "stale connection"
       notifications should actually mean once this ships
+
+## Phase 2b — Gmail send/reply (confirmed Sept 2026: lite tier gets this,
+## but as its own tested phase right after 2, not bundled with it)
+Highest-trust permission in the whole product — sending a wrong/bad
+email as the client to a real person is worse than any other write-scope
+mistake. Ship read first (Phase 2), prove it's solid, then this.
+- [ ] Add gmail.send scope to the same Google OAuth app
+- [ ] Reuse the existing ComposeModal pattern: Claude may draft, but
+      Send is ALWAYS an explicit manual click — no auto-send, no exceptions
+- [ ] Real reply-to-thread via Gmail API once drafted
+- [ ] Yahoo Mail: separate investigation needed before promising this —
+      Yahoo's third-party mail API access is far less reliable/complete
+      than Gmail's OAuth platform and has been through repeated
+      deprecations. Don't commit this to a client until verified working.
 
 ## Phase 3 — Target client's real stack (confirm with Nick before starting)
 Building generically first risks building the wrong thing twice. Need:
