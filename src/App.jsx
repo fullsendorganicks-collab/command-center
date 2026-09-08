@@ -4,6 +4,7 @@ import TopBar from './components/shell/TopBar'
 import SearchModal from './components/shell/SearchModal'
 import FloatingChatBubble from './components/shell/FloatingChatBubble'
 import LoginScreen from './components/shell/LoginScreen'
+import GoogleOAuthCallback from './components/shell/GoogleOAuthCallback'
 import OverviewPage from './components/panels/OverviewPage'
 import ClaudePage from './components/panels/ClaudePage'
 import SitesPage from './components/panels/SitesPage'
@@ -78,9 +79,25 @@ function Gate() {
   if (!user) return <LoginScreen />
   return (
     <WorkspaceProvider>
-      <AppShell />
+      <GoogleCallbackGate />
     </WorkspaceProvider>
   )
+}
+
+function GoogleCallbackGate() {
+  // Google's data-connection redirect uses ?code=...&state=<workspaceId>.
+  // Supabase's own auth redirect (magic link / login) also uses `code`,
+  // but never sets our `state` param this way, so checking for both
+  // together safely distinguishes "Google data connection" from a
+  // Supabase auth callback that already resolved before we got here.
+  const params = new URLSearchParams(window.location.search)
+  const code = params.get('code')
+  const state = params.get('state')
+
+  if (code && state) {
+    return <GoogleOAuthCallback code={code} workspaceId={state} onDone={() => window.location.replace(window.location.pathname)} />
+  }
+  return <AppShell />
 }
 
 export default function App() {

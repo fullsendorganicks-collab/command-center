@@ -27,14 +27,22 @@ export default function FloatingChatBubble() {
   return (
     <>
       {open && (
-        <div className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-50 w-[calc(100vw-2rem)] max-w-sm hud-card accent-glow p-4 animate-in flex flex-col" style={{ height: '440px' }}>
-          <div className="flex items-center justify-between mb-2 shrink-0">
+        // Full-screen sheet on mobile (so the close button can never be
+        // covered by the bottom tab bar or anything else), a floating
+        // panel on desktop. z-[60] keeps it above the mobile bottom nav
+        // (z-40) and the round toggle button below.
+        <div className="fixed inset-0 md:inset-auto md:bottom-6 md:right-6 z-[60] md:w-full md:max-w-sm h-[100dvh] max-h-[100dvh] md:h-[440px] md:max-h-[440px] hud-card accent-glow p-4 animate-in flex flex-col md:rounded-lg rounded-none">
+          <div className="flex items-center justify-between mb-2 shrink-0 pt-[env(safe-area-inset-top)]">
             <div className="flex items-center gap-2">
               <Bot size={16} style={{ color: 'var(--accent-bright)' }} />
               <span className="text-headline text-sm font-semibold">Quick Claude</span>
             </div>
-            <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-white/10">
-              <X size={15} className="text-body-c" />
+            <button
+              onClick={() => setOpen(false)}
+              className="p-2 rounded-lg hover:bg-white/10 active:bg-white/15"
+              aria-label="Close chat"
+            >
+              <X size={20} className="text-body-c" />
             </button>
           </div>
           <div className="flex-1 min-h-0">
@@ -43,14 +51,16 @@ export default function FloatingChatBubble() {
         </div>
       )}
 
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-transform duration-250 hover:scale-105"
-        style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-bright))' }}
-        aria-label="Open Claude chat"
-      >
-        <Bot size={24} className="text-black" />
-      </button>
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-transform duration-250 hover:scale-105"
+          style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-bright))' }}
+          aria-label="Open Claude chat"
+        >
+          <Bot size={24} className="text-black" />
+        </button>
+      )}
     </>
   )
 }
