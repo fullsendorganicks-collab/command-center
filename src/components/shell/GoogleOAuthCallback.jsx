@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
-import { completeGoogleDataConnection } from '../../lib/googleData'
+import { completeGoogleDataConnection, getGoogleDataRedirectUri } from '../../lib/googleData'
 
 /**
  * Rendered when the URL has ?code=...&state=<workspaceId> from Google's
@@ -15,7 +15,7 @@ export default function GoogleOAuthCallback({ code, workspaceId, onDone }) {
     let cancelled = false
     ;(async () => {
       try {
-        const redirectUri = window.location.origin + window.location.pathname
+        const redirectUri = getGoogleDataRedirectUri()
         await completeGoogleDataConnection({ code, workspaceId, redirectUri })
         if (!cancelled) setStatus('done')
       } catch (e) {

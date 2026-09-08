@@ -14,12 +14,27 @@ export const GOOGLE_DATA_SCOPES = [
 
 const GOOGLE_AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth'
 
-/** Builds the URL to send the browser to Google's consent screen. */
 // Public-safe value: OAuth Client IDs are designed to be visible
 // client-side (unlike the client secret, which never appears here or
 // anywhere in this repo). Falls back to the env var when set locally.
 const GOOGLE_CLIENT_ID_FALLBACK = '925099673042-6pdj9e5pi2ihvb2nd6otikgj8ointegk.apps.googleusercontent.com'
 
+/**
+ * Google requires the redirect_uri sent here to EXACTLY byte-match one of
+ * the Authorized redirect URIs registered in Google Cloud Console — a
+ * stray trailing slash is enough to trigger a redirect_uri_mismatch (400)
+ * error. Centralizing the redirect URI here (instead of each call site
+ * building its own from window.location) means there's exactly one place
+ * this can go wrong, and it always strips any trailing slash so it
+ * matches a registered URI with no trailing slash.
+ */
+export function getGoogleDataRedirectUri() {
+  const origin = window.location.origin
+  const path = window.location.pathname.replace(/\/+$/, '') // strip trailing slash(es)
+  return origin + path
+}
+
+/** Builds the URL to send the browser to Google's consent screen. */
 export function buildGoogleDataAuthUrl({ workspaceId, redirectUri }) {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID_FALLBACK
   if (!clientId) {
@@ -27,7 +42,7 @@ export function buildGoogleDataAuthUrl({ workspaceId, redirectUri }) {
   }
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: redirectUri,
+    redirect_uri: redirectUri || getGoogleDataRedirectUri(),
     response_type: 'code',
     scope: GOOGLE_DATA_SCOPES.join(' '),
     access_type: 'offline', // needed to get a refresh token

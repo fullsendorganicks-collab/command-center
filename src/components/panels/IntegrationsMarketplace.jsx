@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Plug, Check, Link2 } from 'lucide-react'
 import { INTEGRATIONS_CATALOG } from '../../data/mockData'
 import { useWorkspace } from '../../context/WorkspaceContext'
-import { hasGoogleConnection, buildGoogleDataAuthUrl } from '../../lib/googleData'
+import { hasGoogleConnection, buildGoogleDataAuthUrl, getGoogleDataRedirectUri } from '../../lib/googleData'
 
 function GoogleDataCard() {
   const { workspaceId } = useWorkspace()
@@ -16,7 +16,7 @@ function GoogleDataCard() {
 
   function handleConnect() {
     try {
-      const url = buildGoogleDataAuthUrl({ workspaceId, redirectUri: window.location.origin + window.location.pathname })
+      const url = buildGoogleDataAuthUrl({ workspaceId, redirectUri: getGoogleDataRedirectUri() })
       window.location.href = url
     } catch (e) {
       setError(e.message)

@@ -5,7 +5,7 @@ import { useFocus } from '../../context/FocusContext'
 import { useWorkspace } from '../../context/WorkspaceContext'
 import { INBOX } from '../../data/mockData'
 import ComposeModal from '../ui/ComposeModal'
-import { hasGoogleConnection, getGmailSummary, buildGoogleDataAuthUrl } from '../../lib/googleData'
+import { hasGoogleConnection, getGmailSummary, buildGoogleDataAuthUrl, getGoogleDataRedirectUri } from '../../lib/googleData'
 
 export default function InboxPanel() {
   const { focusedId } = useFocus()
@@ -35,7 +35,7 @@ export default function InboxPanel() {
 
   function handleConnect() {
     try {
-      const url = buildGoogleDataAuthUrl({ workspaceId, redirectUri: window.location.origin + window.location.pathname })
+      const url = buildGoogleDataAuthUrl({ workspaceId, redirectUri: getGoogleDataRedirectUri() })
       window.location.href = url
     } catch (e) {
       setError(e.message)
