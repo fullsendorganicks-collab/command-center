@@ -15,8 +15,13 @@ export const GOOGLE_DATA_SCOPES = [
 const GOOGLE_AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth'
 
 /** Builds the URL to send the browser to Google's consent screen. */
+// Public-safe value: OAuth Client IDs are designed to be visible
+// client-side (unlike the client secret, which never appears here or
+// anywhere in this repo). Falls back to the env var when set locally.
+const GOOGLE_CLIENT_ID_FALLBACK = '925099673042-6pdj9e5pi2ihvb2nd6otikgj8ointegk.apps.googleusercontent.com'
+
 export function buildGoogleDataAuthUrl({ workspaceId, redirectUri }) {
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID_FALLBACK
   if (!clientId) {
     throw new Error('Google OAuth is not configured yet (VITE_GOOGLE_CLIENT_ID missing).')
   }
