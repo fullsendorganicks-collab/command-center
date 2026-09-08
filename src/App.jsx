@@ -38,7 +38,13 @@ function AppShell() {
   const Page = PAGES[nav]
 
   const staleConnections = CONNECTIONS.filter(c => c.status !== 'ok')
-  const notifications = staleConnections.map(c => `${c.account_label} needs attention (${c.status})`)
+  // Structured so each notification can navigate somewhere on click —
+  // stale connections point at Sites (where System Status lives) rather
+  // than being inert text.
+  const notifications = staleConnections.map(c => ({
+    text: `${c.account_label} needs attention (${c.status})`,
+    page: 'sites',
+  }))
 
   return (
     <div className="flex min-h-screen">
@@ -46,7 +52,7 @@ function AppShell() {
       <Sidebar active={nav} onNavigate={setNav} systemOk={HEALTH_SUMMARY.pct >= 85} />
 
       <div className="flex-1 min-w-0 flex flex-col relative z-10">
-        <TopBar onOpenSearch={() => setSearchOpen(true)} notifications={notifications} />
+        <TopBar onOpenSearch={() => setSearchOpen(true)} notifications={notifications} onNavigate={setNav} />
         <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6">
           <h1 className="text-headline text-xl font-bold mb-4 md:hidden">{PAGE_TITLES[nav]}</h1>
           <Page />

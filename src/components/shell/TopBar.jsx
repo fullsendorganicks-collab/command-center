@@ -8,7 +8,7 @@ function statusColor(pct) {
   return { bg: 'rgba(240,85,64,0.12)', fg: 'var(--red)', border: 'rgba(240,85,64,0.3)' }
 }
 
-export default function TopBar({ onOpenSearch, notifications = [] }) {
+export default function TopBar({ onOpenSearch, notifications = [], onNavigate }) {
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 60000)
@@ -73,9 +73,13 @@ export default function TopBar({ onOpenSearch, notifications = [] }) {
             {notifications.length === 0 ? (
               <div className="text-faint-c text-xs px-2 py-3">You're all caught up.</div>
             ) : notifications.map((n, i) => (
-              <div key={i} className="px-2 py-2 rounded hover:bg-white/5 text-xs text-body-c">
-                {n}
-              </div>
+              <button
+                key={i}
+                onClick={() => { onNavigate?.(n.page); setShowNotifs(false) }}
+                className="w-full text-left px-2 py-2 rounded hover:bg-white/8 text-xs text-body-c transition-colors"
+              >
+                {n.text}
+              </button>
             ))}
           </div>
         )}
