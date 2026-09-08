@@ -2,6 +2,31 @@
 
 _Written Sept 2026. Supersedes ad-hoc fixes — this is the ordered plan._
 
+## Tier split (confirmed Sept 2026) — the thing that keeps this on track
+
+The $2,500 lite tier and the $6k+/month full tier are NOT the same
+product at different prices. Write access (publish/upload/edit on a
+client's live site or store) is most of the engineering + support cost,
+so it can't be baseline — it's what makes the full tier worth $6k+/mo.
+
+- **Lite ($2,500 one-time)**: real READ-ONLY connections only — actual
+  Gmail unread count, actual GA4 numbers, actual social follower counts,
+  actual Shopify orders/inventory view, actual WordPress site stats.
+  No publish, no upload, no edit. This alone legitimately kills
+  tab-switching for someone who just checks numbers all day. Low risk,
+  near-zero ongoing cost to Nick (client brings their own API keys where
+  applicable, e.g. Anthropic).
+- **Full ($6k+ setup + monthly)**: lite tier + WRITE capabilities —
+  publish blog posts, upload product photos, edit product listings,
+  post to social directly from the dashboard. This is the "mini website
+  for their main site" vision. Justifies the monthly fee because Nick
+  owns real ongoing risk here (a bad write hits a live store) and real
+  support burden (OAuth token expiry, API changes).
+
+**Rule going forward: every new integration ships its READ scope first,
+proven working, before its WRITE scope is even started.** Don't let
+scope creep merge the two tiers back together.
+
 ## The core problem to solve
 
 Right now the dashboard *looks* right but shows **mock/stale data**. A
@@ -63,10 +88,27 @@ Building generically first risks building the wrong thing twice. Need:
 - [ ] LinkedIn, TikTok, X — same pattern, each its own dev app, lower
       priority unless the target client needs them
 
-## Phase 5 — WordPress connection
-- [ ] Likely a lightweight plugin (or REST API + application password)
-      on her WP site reporting basic stats back — needs its own design
-      pass, WP doesn't have a universal OAuth like Google/Meta
+## Phase 5 — WordPress connection (READ only)
+- [ ] Application-password-based REST API connection (WP has no OAuth
+      like Google/Meta) — read site stats, recent posts, basic health
+- [ ] No publish/upload here yet — that's Phase 5b, full tier only
+
+## Phase 5b — Shopify connection (READ only, then WRITE as full-tier add-on)
+- [ ] Shopify Admin API OAuth app (Nick registers once, per-store install
+      is one-click for the client after that)
+- [ ] READ: orders, inventory levels, product list — lite tier
+- [ ] WRITE (full tier only, later): upload product photos, edit listings,
+      update inventory — this is real live-store risk, build carefully,
+      staging/undo consideration before shipping
+
+## Phase 5c — Publish/upload capability (FULL TIER ONLY — do not start
+## until Phases 1-5b are solid and the lite tier is actually selling)
+- [ ] WordPress: create/edit posts + media upload via REST API
+- [ ] Shopify: product photo upload + listing edits via Admin API
+- [ ] Social: actual posting (draft-then-manual-post flow already built,
+      this just wires the real publish call once a platform is connected)
+- [ ] Every write action needs an explicit, undismissable confirmation
+      step in the UI — no silent auto-publish, ever
 
 ## Phase 6 — Mobile-first pass (real decision needed from Nick — see below)
 - [ ] Drag-to-reorder cards works via touch, not just mouse
