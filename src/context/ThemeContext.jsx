@@ -32,7 +32,7 @@ export function ThemeProvider({ children }) {
     ;(async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      await supabase.from('layout_prefs').upsert({
+      await supabase.from('cc_layout_prefs').upsert({
         user_id: user.id,
         theme: prefs.theme,
         accent_color: prefs.accent,
@@ -47,7 +47,7 @@ export function ThemeProvider({ children }) {
     ;(async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data } = await supabase.from('layout_prefs').select('theme, accent_color').eq('user_id', user.id).maybeSingle()
+      const { data } = await supabase.from('cc_layout_prefs').select('theme, accent_color').eq('user_id', user.id).maybeSingle()
       if (data) {
         const preset = ACCENT_PRESETS.find(a => a.hex === data.accent_color)
         setPrefs(p => ({ ...p, theme: data.theme, accent: data.accent_color, accentBright: preset?.bright || data.accent_color }))
