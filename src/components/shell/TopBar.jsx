@@ -68,15 +68,15 @@ export default function TopBar({ onOpenSearch, notifications = [], onNavigate })
           )}
         </button>
         {showNotifs && (
-          <div className="absolute right-0 mt-2 w-72 hud-card accent-glow p-2 animate-in">
-            <div className="text-headline text-sm font-semibold px-2 py-1.5">Notifications</div>
+          <div className="fixed inset-x-4 top-16 sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-2 sm:w-72 z-[70] hud-card accent-glow p-2 animate-in max-h-[60vh] overflow-y-auto">
+            <div className="text-headline text-sm font-semibold px-2 py-1.5 sticky top-0 bg-inherit">Notifications</div>
             {notifications.length === 0 ? (
               <div className="text-faint-c text-xs px-2 py-3">You're all caught up.</div>
             ) : notifications.map((n, i) => (
               <button
                 key={i}
                 onClick={() => { onNavigate?.(n.page); setShowNotifs(false) }}
-                className="w-full text-left px-2 py-2 rounded hover:bg-white/8 text-xs text-body-c transition-colors"
+                className="w-full text-left px-2 py-2 rounded hover:bg-white/8 active:bg-white/12 text-xs text-body-c transition-colors"
               >
                 {n.text}
               </button>

@@ -61,11 +61,12 @@ export default function HudCard({ id, title, icon: Icon, accentClass = '', span 
               {...attributes}
               {...listeners}
               onClick={(e) => e.stopPropagation()}
-              className="p-1 rounded hover:bg-white/10 cursor-grab active:cursor-grabbing text-faint-c opacity-0 group-hover:opacity-100 transition-opacity"
+              className="p-1.5 -m-1 rounded hover:bg-white/10 cursor-grab active:cursor-grabbing text-faint-c opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+              style={{ touchAction: 'none' }}
               aria-label="Drag to rearrange"
               title="Drag to rearrange"
             >
-              <GripVertical size={14} />
+              <GripVertical size={16} />
             </button>
           )}
         </div>

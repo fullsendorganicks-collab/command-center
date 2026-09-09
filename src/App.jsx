@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Routes, Route } from 'react-router-dom'
 import Sidebar from './components/shell/Sidebar'
 import TopBar from './components/shell/TopBar'
 import SearchModal from './components/shell/SearchModal'
@@ -10,6 +11,8 @@ import ClaudePage from './components/panels/ClaudePage'
 import SitesPage from './components/panels/SitesPage'
 import SocialPage from './components/panels/SocialPage'
 import SettingsPage from './components/panels/SettingsPage'
+import PrivacyPolicy from './components/pages/PrivacyPolicy'
+import TermsOfService from './components/pages/TermsOfService'
 import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { WorkspaceProvider } from './context/WorkspaceContext'
@@ -103,9 +106,21 @@ function GoogleCallbackGate() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <Gate />
-      </AuthProvider>
+      {/* /privacy and /terms are real, standalone, public URLs — Google's
+          OAuth verification review loads these directly, so they must
+          render on their own without requiring login or the app shell. */}
+      <Routes>
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route
+          path="*"
+          element={
+            <AuthProvider>
+              <Gate />
+            </AuthProvider>
+          }
+        />
+      </Routes>
     </ThemeProvider>
   )
 }

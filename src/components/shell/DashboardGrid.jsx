@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable'
 import { useFocus } from '../../context/FocusContext'
 
@@ -32,7 +32,15 @@ export default function DashboardGrid({ cards }) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(order)) } catch { /* ignore */ }
   }, [order])
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+  // PointerSensor covers mouse; TouchSensor is needed separately on
+  // mobile because otherwise the browser's native scroll gesture wins
+  // the touch before dnd-kit's pointer listener ever fires. A short
+  // press-and-hold delay (with small tolerance for finger jitter) lets
+  // a quick tap-and-scroll still work normally.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } }),
+  )
 
   const handleDragEnd = useCallback((event) => {
     const { active, over } = event
