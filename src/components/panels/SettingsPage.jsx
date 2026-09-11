@@ -38,6 +38,14 @@ export default function SettingsPage() {
       {tab === 'appearance' && <ThemeSettingsPanel />}
       {tab === 'integrations' && <IntegrationsMarketplace />}
       {tab === 'account' && <ApiKeysSettings />}
+
+      {/* Plain <a> tags (full page load) instead of React Router's Link —
+          this sidesteps a known bug where navigating client-side from
+          /privacy or /terms back into the app shell blanks the screen. */}
+      <div className="flex items-center gap-4 mt-8 pt-4 border-t border-white/10 text-[11px] text-faint-c">
+        <a href="/privacy" className="hover:text-body-c transition-colors underline">Privacy Policy</a>
+        <a href="/terms" className="hover:text-body-c transition-colors underline">Terms of Service</a>
+      </div>
     </div>
   )
 }

@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { ArrowLeft, Zap } from 'lucide-react'
 
 const LAST_UPDATED = 'September 9, 2026'
@@ -15,9 +14,12 @@ export default function PrivacyPolicy() {
           <div className="text-headline font-bold text-sm tracking-wide">COMMAND CENTER</div>
         </div>
 
-        <Link to="/" className="inline-flex items-center gap-1.5 text-xs text-faint-c hover:text-body-c transition-colors mb-6">
+        {/* Plain <a> (full page load) not React Router's Link — avoids a
+            known black-screen bug when navigating client-side back into
+            the authenticated app shell from a public page like this. */}
+        <a href="/" className="inline-flex items-center gap-1.5 text-xs text-faint-c hover:text-body-c transition-colors mb-6">
           <ArrowLeft size={13} /> Back to dashboard
-        </Link>
+        </a>
 
         <h1 className="text-headline text-2xl font-bold mb-1">Privacy Policy</h1>
         <p className="text-faint-c text-xs mb-8">Last updated: {LAST_UPDATED}</p>

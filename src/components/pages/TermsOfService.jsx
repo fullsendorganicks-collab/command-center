@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { ArrowLeft, Zap } from 'lucide-react'
 
 const LAST_UPDATED = 'September 9, 2026'
@@ -15,9 +14,9 @@ export default function TermsOfService() {
           <div className="text-headline font-bold text-sm tracking-wide">COMMAND CENTER</div>
         </div>
 
-        <Link to="/" className="inline-flex items-center gap-1.5 text-xs text-faint-c hover:text-body-c transition-colors mb-6">
+        <a href="/" className="inline-flex items-center gap-1.5 text-xs text-faint-c hover:text-body-c transition-colors mb-6">
           <ArrowLeft size={13} /> Back to dashboard
-        </Link>
+        </a>
 
         <h1 className="text-headline text-2xl font-bold mb-1">Terms of Service</h1>
         <p className="text-faint-c text-xs mb-8">Last updated: {LAST_UPDATED}</p>
