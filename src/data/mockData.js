@@ -89,7 +89,7 @@ export const INBOX = [
   { id: 'e2', account: 'Gmail — fullsend', sender: 'FullSend Wholesale Order', subject: 'New order #12847', preview: 'You have a new wholesale order awaiting fulfillment.', time: '8:15 AM', unread: true },
   { id: 'e3', account: 'Gmail — cdai-support', sender: 'Google Merchant Center', subject: 'Action required: Product feed issue', preview: 'One or more of your product feeds has an issue that needs attention.', time: '6:32 AM', unread: true },
   { id: 'e4', account: 'Gmail — dv8', sender: 'DV8 Build Request', subject: 'New build request — Marcus T.', preview: 'Lift kit + wheels inquiry for a 2022 F-150...', time: 'Yesterday', unread: false },
-  { id: 'e5', account: 'Gmail — allocera-sales', sender: 'Forum Ventures', subject: 'Re: pitch follow-up', preview: 'Thanks for submitting — we\'ll be in touch by...', time: 'Yesterday', unread: false },
+  { id: 'e5', account: 'Gmail — allocera-sales', sender: 'Forum Ventures', subject: 'Re: pitch follow-up', preview: 'Thanks for submitting, will be in touch by...', time: 'Yesterday', unread: false },
 ]
 
 // ---- Social ----
