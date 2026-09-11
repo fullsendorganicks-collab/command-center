@@ -28,7 +28,10 @@ export function AuthProvider({ children }) {
     // where it was requested from.
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin },
+      // /app, not the bare origin — the bare origin is now the public
+      // marketing homepage (not logged-in), so a magic link must send
+      // people straight to the app, not back to the homepage.
+      options: { emailRedirectTo: `${window.location.origin}/app` },
     })
     if (error) throw error
   }
@@ -37,12 +40,11 @@ export function AuthProvider({ children }) {
     if (!supabaseConfigured) throw new Error('Supabase is not configured yet.')
     // No password to set or manage — Google handles auth entirely, and
     // Supabase completes the handshake server-side via the redirect URI
-    // registered in Google Cloud Console. Same origin-based redirect
-    // reasoning as the magic-link fix: always send back to wherever this
-    // app is actually running, not a hardcoded localhost default.
+    // registered in Google Cloud Console. Same /app reasoning as the
+    // magic-link fix above.
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: `${window.location.origin}/app` },
     })
     if (error) throw error
   }

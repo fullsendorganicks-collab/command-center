@@ -13,6 +13,7 @@ import SocialPage from './components/panels/SocialPage'
 import SettingsPage from './components/panels/SettingsPage'
 import PrivacyPolicy from './components/pages/PrivacyPolicy'
 import TermsOfService from './components/pages/TermsOfService'
+import HomePage from './components/pages/HomePage'
 import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { WorkspaceProvider } from './context/WorkspaceContext'
@@ -106,12 +107,23 @@ function GoogleCallbackGate() {
 export default function App() {
   return (
     <ThemeProvider>
-      {/* /privacy and /terms are real, standalone, public URLs — Google's
-          OAuth verification review loads these directly, so they must
-          render on their own without requiring login or the app shell. */}
+      {/* / is a real, public marketing page — Google's OAuth verification
+          requires the app's home page to explain what it does and be
+          viewable without logging in. /privacy and /terms are the same:
+          standalone public pages, no auth required. The actual app lives
+          at /app, behind the Gate (login required). */}
       <Routes>
+        <Route path="/" element={<HomePage />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />
+        <Route
+          path="/app"
+          element={
+            <AuthProvider>
+              <Gate />
+            </AuthProvider>
+          }
+        />
         <Route
           path="*"
           element={
