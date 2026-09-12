@@ -17,7 +17,16 @@ export function WorkspaceProvider({ children }) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (!supabaseConfigured || !user) { setLoading(false); return }
+    if (!supabaseConfigured || !user) {
+      // Clears stale state on sign-out — without this, workspaceId stayed
+      // populated after logout and anything still reading it (e.g. the
+      // Google "Connected" badge) kept showing pre-logout state until a
+      // full page reload, which read as "sign-out doesn't actually work".
+      setWorkspaceId(null)
+      setError(null)
+      setLoading(false)
+      return
+    }
 
     let cancelled = false
     ;(async () => {
@@ -70,4 +79,17 @@ export function useWorkspace() {
   const ctx = useContext(WorkspaceContext)
   if (!ctx) throw new Error('useWorkspace must be used within WorkspaceProvider')
   return ctx
+}
+
+/**
+ * Same as useWorkspace(), but returns a safe "no workspace yet" shape
+ * instead of throwing when rendered outside WorkspaceProvider (e.g. the
+ * unconfigured-Supabase dev fallback in App.jsx's Gate, which renders
+ * AppShell — and therefore Sidebar/TopBar — before WorkspaceProvider ever
+ * mounts). Anything that must work on that path should use this instead
+ * of useWorkspace().
+ */
+export function useWorkspaceOptional() {
+  const ctx = useContext(WorkspaceContext)
+  return ctx || { workspaceId: null, loading: false, error: null }
 }

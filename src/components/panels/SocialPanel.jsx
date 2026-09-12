@@ -1,96 +1,42 @@
-import { useState } from 'react'
-import { Users, TrendingUp, TrendingDown, PenSquare, Camera, ThumbsUp, Briefcase, AtSign, Music2 } from 'lucide-react'
+import { Users, Camera, ThumbsUp, Briefcase, AtSign } from 'lucide-react'
 import HudCard from '../ui/HudCard'
 import { useFocus } from '../../context/FocusContext'
-import { SOCIAL_ACCOUNTS, SOCIAL_FEED } from '../../data/mockData'
-import ComposeModal from '../ui/ComposeModal'
 
-// Generic geometric icons stand in for platform logos (lucide-react
-// dropped trademarked brand marks) — fine for a white-label product
-// where per-platform branding isn't the point anyway.
-const PLATFORM_ICON = { instagram: Camera, facebook: ThumbsUp, linkedin: Briefcase, twitter: AtSign, tiktok: Music2 }
-const PLATFORM_COLOR = { instagram: '#e8871e', facebook: '#7fb0e8', linkedin: '#7fb0e8', twitter: '#b0ada6', tiktok: '#f0ede6' }
+// No social platform has a real OAuth/API integration built yet — showing
+// fabricated accounts/followers/feed here was actively misleading. This
+// is the honest state: real platforms listed, none connected, until each
+// one gets its own real integration built (each is its own separate OAuth
+// app + API, not a small add-on). Generic icons stand in for platform
+// logos — lucide-react doesn't ship trademarked brand marks.
+const PLATFORMS = [
+  { key: 'instagram', label: 'Instagram', icon: Camera },
+  { key: 'facebook', label: 'Facebook', icon: ThumbsUp },
+  { key: 'linkedin', label: 'LinkedIn', icon: Briefcase },
+  { key: 'twitter', label: 'X / Twitter', icon: AtSign },
+]
 
 export default function SocialPanel() {
   const { focusedId } = useFocus()
   const isFocused = focusedId === 'social'
-  const [filterPlatform, setFilterPlatform] = useState('all')
-  const [composeAccount, setComposeAccount] = useState(null)
-
-  const platforms = ['all', ...new Set(SOCIAL_ACCOUNTS.map(a => a.platform))]
-  const filteredFeed = filterPlatform === 'all' ? SOCIAL_FEED : SOCIAL_FEED.filter(f => f.platform === filterPlatform)
-  const filteredAccounts = filterPlatform === 'all' ? SOCIAL_ACCOUNTS : SOCIAL_ACCOUNTS.filter(a => a.platform === filterPlatform)
 
   return (
     <HudCard id="social" title="Social" icon={Users} span="md:col-span-1">
-      <div className="text-xs text-faint-c mb-2">{SOCIAL_ACCOUNTS.length} accounts · 3+ platforms</div>
+      <div className="text-xs text-faint-c mb-3">No social accounts connected yet</div>
 
-      {isFocused && (
-        <div className="flex gap-1.5 flex-wrap mb-3">
-          {platforms.map(p => (
-            <button
-              key={p}
-              onClick={() => setFilterPlatform(p)}
-              className="px-2.5 py-1 rounded-full text-[11px] font-medium border capitalize transition-colors"
-              style={filterPlatform === p
-                ? { background: 'color-mix(in srgb, var(--accent) 18%, transparent)', borderColor: 'var(--accent)', color: 'var(--accent-bright)' }
-                : { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.1)', color: 'var(--text-body)' }}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {isFocused && (
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          {filteredAccounts.map(a => {
-            const Icon = PLATFORM_ICON[a.platform] || Users
-            return (
-              <div key={a.id} className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-white/[0.03]">
-                <Icon size={15} style={{ color: PLATFORM_COLOR[a.platform] }} className="shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs text-headline truncate">{a.label}</div>
-                  <div className="flex items-center gap-1 text-[11px] text-faint-c">
-                    {a.followers.toLocaleString()} followers
-                    <span className="flex items-center gap-0.5" style={{ color: a.delta >= 0 ? 'var(--lime-bright)' : 'var(--red)' }}>
-                      {a.delta >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                      {Math.abs(a.delta)}%
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setComposeAccount(a)}
-                  className="p-1.5 rounded-md bg-white/8 hover:bg-white/14 shrink-0"
-                  title="Draft post"
-                >
-                  <PenSquare size={12} className="text-body-c" />
-                </button>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      <div className="space-y-1.5">
-        {(isFocused ? filteredFeed : filteredFeed.slice(0, 3)).map(f => {
-          const Icon = PLATFORM_ICON[f.platform] || Users
-          return (
-            <div key={f.id} className="flex gap-2 px-2.5 py-2 rounded-lg bg-white/[0.03]">
-              <Icon size={14} style={{ color: PLATFORM_COLOR[f.platform] }} className="mt-0.5 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <div className="text-xs text-body-c truncate">
-                  <span className="text-headline font-medium">{f.account}</span> — {f.text}
-                </div>
-                <div className="text-[10px] text-faint-c">{f.time}</div>
-              </div>
-            </div>
-          )
-        })}
+      <div className={isFocused ? 'grid grid-cols-2 gap-2' : 'space-y-1.5'}>
+        {PLATFORMS.map(({ key, label, icon: Icon }) => (
+          <div key={key} className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-white/[0.03]">
+            <Icon size={15} className="text-faint-c shrink-0" />
+            <div className="min-w-0 flex-1 text-xs text-faint-c truncate">{label}</div>
+            <span className="text-[10px] text-faint-c shrink-0">Not built yet</span>
+          </div>
+        ))}
       </div>
 
-      {composeAccount && (
-        <ComposeModal type="social" context={composeAccount} onClose={() => setComposeAccount(null)} />
+      {isFocused && (
+        <div className="text-[11px] text-faint-c mt-4 pt-3 border-t border-white/10">
+          Each social platform needs its own OAuth app and API integration — none exist yet. This panel will show real accounts and activity once one is built and connected.
+        </div>
       )}
     </HudCard>
   )

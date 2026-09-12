@@ -110,13 +110,17 @@ export const SOCIAL_FEED = [
 ]
 
 // ---- Integrations catalog (marketplace) ----
+// `connected` is intentionally always false here — every one of these is a
+// "Coming soon" tile in IntegrationsMarketplace.jsx (no OAuth/API wired to
+// any of them). Google is the only real, connectable integration today,
+// and it's rendered separately (GoogleDataCard), not from this list.
 export const INTEGRATIONS_CATALOG = [
   { platform_type: 'google_ads', display_name: 'Google Ads', category: 'analytics', connected: false },
   { platform_type: 'meta_ads', display_name: 'Meta Ads', category: 'analytics', connected: false },
-  { platform_type: 'ga4', display_name: 'GA4', category: 'analytics', connected: true },
+  { platform_type: 'ga4', display_name: 'GA4', category: 'analytics', connected: false },
   { platform_type: 'hubspot', display_name: 'HubSpot', category: 'crm', connected: false },
-  { platform_type: 'supabase', display_name: 'Supabase', category: 'infra', connected: true },
-  { platform_type: 'github', display_name: 'GitHub', category: 'infra', connected: true },
+  { platform_type: 'supabase', display_name: 'Supabase', category: 'infra', connected: false },
+  { platform_type: 'github', display_name: 'GitHub', category: 'infra', connected: false },
   { platform_type: 'custom', display_name: 'Custom Integration', category: 'custom', connected: false },
 ]
 

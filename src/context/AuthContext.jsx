@@ -9,12 +9,21 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!supabaseConfigured) { setLoading(false); return }
+    // getSession() reads from local storage / the URL hash the client
+    // already parsed on init — it doesn't hit the network, so there's no
+    // 401 race here regardless of whether the OAuth redirect just landed.
     supabase.auth.getSession().then(({ data }) => {
       setUser(data.session?.user ?? null)
       setLoading(false)
     })
+    // onAuthStateChange fires once the SDK finishes processing a fresh
+    // OAuth/magic-link redirect's #hash fragment, so this is what
+    // actually catches the just-signed-in case — getSession() above may
+    // still return null on that very first render if it runs before the
+    // hash has been parsed.
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
+      setLoading(false)
     })
     return () => sub.subscription.unsubscribe()
   }, [])

@@ -1,11 +1,10 @@
-import { Zap, Mail, BarChart3, Users, Bot, ShieldCheck } from 'lucide-react'
+import { Zap, Mail, BarChart3, Bot, ShieldCheck } from 'lucide-react'
 
 const FEATURES = [
-  { icon: Mail, title: 'Inbox in one place', desc: 'See and reply to Gmail without leaving the dashboard.' },
-  { icon: BarChart3, title: 'Real analytics', desc: 'Google Analytics and Search Console data, live.' },
-  { icon: Users, title: 'Social, unified', desc: 'One feed for Instagram, Facebook, LinkedIn, and more.' },
-  { icon: Bot, title: 'Claude built in', desc: 'Draft replies and posts with Claude, right where you work.' },
-  { icon: ShieldCheck, title: 'You stay in control', desc: 'Nothing sends or posts without your explicit click.' },
+  { icon: Mail, title: 'Gmail in one place', desc: 'See your real unread inbox without leaving the dashboard.' },
+  { icon: BarChart3, title: 'Search Console', desc: 'Real Search Console data for your connected sites.' },
+  { icon: Bot, title: 'Claude built in', desc: 'Draft email replies with Claude, right where you work.' },
+  { icon: ShieldCheck, title: 'You stay in control', desc: 'Nothing sends without your explicit click.' },
 ]
 
 export default function HomePage() {
@@ -24,10 +23,10 @@ export default function HomePage() {
           One dashboard for the accounts you use every day.
         </h1>
         <p className="text-body-c text-base mb-8 max-w-xl leading-relaxed">
-          Command Center connects your own Gmail, Google Analytics, Search Console, and social
-          accounts into a single, real-time view — so you stop switching between dozens of
-          browser tabs to run your business. Every reply or post is drafted for your review;
-          nothing is ever sent without you clicking send yourself.
+          Command Center connects your own Gmail and Search Console into a single, real view —
+          so you stop switching tabs to check them. Claude can draft an email reply for your
+          review; nothing is ever sent without you clicking send yourself. More integrations
+          are being built one at a time.
         </p>
 
         <a

@@ -8,7 +8,7 @@ import { supabase, supabaseConfigured } from './supabase'
 // devtools/network tab, and Nick's own key is never billed for other
 // people's usage.
 
-export const DEFAULT_MODEL = 'claude-sonnet-4-6'
+export const DEFAULT_MODEL = 'claude-sonnet-5'
 
 /**
  * True once we at least know which workspace to ask the proxy about.

@@ -87,3 +87,17 @@ async function fetchGoogleResource(workspaceId, resource) {
 export const getGmailSummary = (workspaceId) => fetchGoogleResource(workspaceId, 'gmail_summary')
 export const getSearchConsoleSummary = (workspaceId) => fetchGoogleResource(workspaceId, 'search_console_summary')
 export const getGa4Summary = (workspaceId) => fetchGoogleResource(workspaceId, 'ga4_summary')
+
+/**
+ * GA4 needs a per-site numeric Property ID (found in GA4 Admin > Property
+ * Settings) before any traffic data can be fetched — there's no way to
+ * look this up automatically, the user has to paste it in themselves.
+ * Stored on cc_properties.analytics_source_id (see schema).
+ */
+export async function saveGa4PropertyId(propertyId, analyticsSourceId) {
+  const { error } = await supabase
+    .from('cc_properties')
+    .update({ analytics_source_id: analyticsSourceId })
+    .eq('id', propertyId)
+  if (error) throw error
+}

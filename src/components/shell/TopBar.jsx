@@ -1,19 +1,26 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Bell, Move } from 'lucide-react'
-import { CURRENT_USER, HEALTH_SUMMARY } from '../../data/mockData'
+import { Search, Bell, Move, LogOut } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
+import { useSystemHealth } from '../../hooks/useSystemHealth'
 
 function statusColor(pct) {
+  if (pct == null) return { bg: 'rgba(154,174,206,0.1)', fg: 'var(--text-faint)', border: 'rgba(154,174,206,0.25)' }
   if (pct >= 85) return { bg: 'rgba(184,240,64,0.12)', fg: 'var(--lime-bright)', border: 'rgba(184,240,64,0.3)' }
   if (pct >= 60) return { bg: 'rgba(240,163,10,0.12)', fg: 'var(--amber)', border: 'rgba(240,163,10,0.3)' }
   return { bg: 'rgba(240,85,64,0.12)', fg: 'var(--red)', border: 'rgba(240,85,64,0.3)' }
 }
 
+function initialsFor(user) {
+  const name = user?.user_metadata?.full_name || user?.user_metadata?.name
+  if (name) {
+    const parts = name.trim().split(/\s+/)
+    return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase()
+  }
+  return (user?.email || '?')[0].toUpperCase()
+}
+
 export default function TopBar({ onOpenSearch, notifications = [], onNavigate }) {
-  const [now, setNow] = useState(Date.now())
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 60000)
-    return () => clearInterval(t)
-  }, [])
+  const { user, signOut } = useAuth()
 
   const [showNotifs, setShowNotifs] = useState(false)
   const notifRef = useRef(null)
@@ -23,8 +30,20 @@ export default function TopBar({ onOpenSearch, notifications = [], onNavigate })
     return () => document.removeEventListener('mousedown', onClick)
   }, [])
 
-  const c = statusColor(HEALTH_SUMMARY.pct)
+  // Real sign-out: this UI previously had no way to log out at all —
+  // AuthContext.signOut() existed but nothing in the app ever called it.
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const userMenuRef = useRef(null)
+  useEffect(() => {
+    function onClick(e) { if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setShowUserMenu(false) }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [])
+
+  const { pct, checking } = useSystemHealth()
+  const c = statusColor(pct)
   const unreadCount = notifications.length
+  const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || 'Signed in'
 
   return (
     <header className="sticky top-0 z-30 flex items-center gap-3 px-4 md:px-6 py-3.5 border-b border-white/10 bg-black/40 backdrop-blur-xl">
@@ -33,7 +52,7 @@ export default function TopBar({ onOpenSearch, notifications = [], onNavigate })
         style={{ background: c.bg, color: c.fg, borderColor: c.border }}
       >
         <span className="w-1.5 h-1.5 rounded-full status-pulse" style={{ backgroundColor: c.fg }} />
-        {HEALTH_SUMMARY.pct}% SYSTEM OPERATIONAL
+        {checking ? 'CHECKING SYSTEM STATUS…' : `${pct}% SYSTEM OPERATIONAL`}
       </div>
 
       <div className="hidden lg:flex items-center gap-1.5 text-faint-c text-xs">
@@ -85,8 +104,28 @@ export default function TopBar({ onOpenSearch, notifications = [], onNavigate })
         )}
       </div>
 
-      <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-headline bg-white/10 border border-white/10 shrink-0" title={CURRENT_USER.name}>
-        {CURRENT_USER.initials}
+      <div className="relative" ref={userMenuRef}>
+        <button
+          onClick={() => setShowUserMenu(s => !s)}
+          className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-headline bg-white/10 border border-white/10 shrink-0 hover:bg-white/15 transition-colors"
+          title={displayName}
+        >
+          {initialsFor(user)}
+        </button>
+        {showUserMenu && (
+          <div className="fixed inset-x-4 top-16 sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-2 sm:w-64 z-[70] hud-card accent-glow p-2 animate-in">
+            <div className="px-2 py-2 border-b border-white/10 mb-1">
+              <div className="text-headline text-sm font-medium truncate">{displayName}</div>
+              {user?.email && <div className="text-[11px] text-faint-c truncate">{user.email}</div>}
+            </div>
+            <button
+              onClick={() => { setShowUserMenu(false); signOut() }}
+              className="w-full flex items-center gap-2 text-left px-2 py-2 rounded hover:bg-white/8 active:bg-white/12 text-xs text-body-c transition-colors"
+            >
+              <LogOut size={13} /> Sign out
+            </button>
+          </div>
+        )}
       </div>
     </header>
   )

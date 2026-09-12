@@ -1,5 +1,5 @@
 import { LayoutGrid, Code2, Globe, Users, Plug, Settings, Zap } from 'lucide-react'
-import { CURRENT_USER } from '../../data/mockData'
+import { useAuth } from '../../context/AuthContext'
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', icon: LayoutGrid },
@@ -10,7 +10,18 @@ const NAV_ITEMS = [
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
 
+function initialsFor(user) {
+  const name = user?.user_metadata?.full_name || user?.user_metadata?.name
+  if (name) {
+    const parts = name.trim().split(/\s+/)
+    return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase()
+  }
+  return (user?.email || '?')[0].toUpperCase()
+}
+
 export default function Sidebar({ active, onNavigate, systemOk = true }) {
+  const { user } = useAuth()
+  const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || 'Signed in'
   return (
     <>
       {/* Desktop sidebar */}
@@ -50,18 +61,17 @@ export default function Sidebar({ active, onNavigate, systemOk = true }) {
         <div className="px-3 pb-3">
           <div className="flex items-center gap-2 px-3 py-2 text-xs text-body-c">
             <span className={`w-2 h-2 rounded-full ${systemOk ? 'bg-[var(--lime-bright)] status-pulse' : 'bg-[var(--red)]'}`} />
-            System Operational
-            <span className="ml-auto text-faint-c">All systems online</span>
+            {systemOk ? 'Google Connected' : 'Nothing Connected'}
+            <span className="ml-auto text-faint-c">{systemOk ? 'Gmail/Analytics/Search' : 'Set up in Settings'}</span>
           </div>
         </div>
 
         <div className="flex items-center gap-3 px-5 py-4 border-t border-white/10">
           <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-headline bg-white/10 border border-white/10 shrink-0">
-            {CURRENT_USER.initials}
+            {initialsFor(user)}
           </div>
           <div className="min-w-0">
-            <div className="text-headline text-sm font-medium truncate">{CURRENT_USER.name}</div>
-            <div className="text-[11px] font-medium" style={{ color: 'var(--accent-bright)' }}>{CURRENT_USER.plan}</div>
+            <div className="text-headline text-sm font-medium truncate">{displayName}</div>
           </div>
         </div>
       </aside>

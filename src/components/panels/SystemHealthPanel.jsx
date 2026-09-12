@@ -3,62 +3,69 @@ import HudCard from '../ui/HudCard'
 import GaugeDial from '../ui/GaugeDial'
 import StatusDot from '../ui/StatusDot'
 import { useFocus } from '../../context/FocusContext'
-import { CONNECTIONS, HEALTH_SUMMARY } from '../../data/mockData'
+import { useSystemHealth } from '../../hooks/useSystemHealth'
 
-// Compact view: aggregate gauges for a handful of headline platforms.
-const HEADLINE_PLATFORMS = [
-  { key: 'gmail', label: 'Gmail (7)' },
-  { key: 'wordpress', label: 'WordPress (4)' },
-  { key: 'search_console', label: 'Search Console' },
-]
-
-function aggregateHealth(platform_type) {
-  const rows = CONNECTIONS.filter(c => c.platform_type === platform_type)
-  if (rows.length === 0) return 0
-  const okCount = rows.filter(r => r.status === 'ok').length
-  return Math.round((okCount / rows.length) * 100)
-}
-
+// Only Google is a real, buildable connection today. Every other platform
+// listed here has no OAuth/API integration at all — showing them as
+// "off" (not fake "ok") is the honest state, not a bug.
 const PLATFORM_LABELS = {
-  gmail: 'Gmail', wordpress: 'WordPress', instagram: 'Instagram', facebook: 'Facebook',
-  tiktok: 'TikTok', linkedin: 'LinkedIn', twitter: 'X / Twitter', search_console: 'Search Console',
-  ga4: 'Google Analytics', supabase: 'Supabase', github: 'GitHub', claude_api: 'Claude API',
+  google: 'Google (Gmail/Analytics/Search Console)',
+  google_ads: 'Google Ads', meta_ads: 'Meta Ads', hubspot: 'HubSpot',
+  instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn',
+  twitter: 'X / Twitter', tiktok: 'TikTok',
 }
 
 export default function SystemHealthPanel() {
   const { focusedId } = useFocus()
   const isFocused = focusedId === 'system-health'
+  const { googleConnected, checking, pct } = useSystemHealth()
+
+  const connections = [
+    { platform_type: 'google', status: checking ? 'checking' : googleConnected ? 'ok' : 'off' },
+    { platform_type: 'google_ads', status: 'off' },
+    { platform_type: 'meta_ads', status: 'off' },
+    { platform_type: 'hubspot', status: 'off' },
+    { platform_type: 'instagram', status: 'off' },
+    { platform_type: 'facebook', status: 'off' },
+    { platform_type: 'linkedin', status: 'off' },
+    { platform_type: 'twitter', status: 'off' },
+    { platform_type: 'tiktok', status: 'off' },
+  ]
+  const healthy = connections.filter(c => c.status === 'ok').length
+  const total = connections.length
 
   return (
     <HudCard id="system-health" title="System Status" icon={ShieldCheck} accentClass="accent-glow" span="md:col-span-2 xl:col-span-2">
       {!isFocused ? (
         <>
-          <div className="grid grid-cols-3 gap-2 mb-2">
-            {HEADLINE_PLATFORMS.map(p => (
-              <GaugeDial key={p.key} value={aggregateHealth(p.key)} label={p.label} size={100} />
-            ))}
+          <div className="flex justify-center mb-2">
+            <GaugeDial value={pct ?? 0} label={checking ? 'Checking…' : 'Connected'} sublabel={checking ? '' : `${healthy} of ${total} platforms`} size={140} />
           </div>
-          <div className="text-center text-sm text-body-c pt-1 border-t border-white/10">
-            <span className="font-semibold text-headline">{HEALTH_SUMMARY.healthy} of {HEALTH_SUMMARY.total}</span> connections healthy
+          <div className="text-center text-xs text-faint-c pt-1 border-t border-white/10">
+            {checking ? 'Checking connection status…' : googleConnected ? 'Google is connected. Everything else needs its own integration built.' : 'Nothing connected yet — start with Google in Settings → Integrations.'}
           </div>
         </>
       ) : (
         <div className="max-h-[65vh] overflow-y-auto pr-1 space-y-1">
-          {CONNECTIONS.map(c => (
-            <div key={c.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] transition-colors">
-              <StatusDot status={c.status} />
-              <div className="min-w-0 flex-1">
-                <div className="text-sm text-headline truncate">{c.account_label}</div>
-                <div className="text-[11px] text-faint-c">{PLATFORM_LABELS[c.platform_type] || c.platform_type}</div>
-              </div>
-              {c.status !== 'ok' ? (
-                <button className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-md font-medium text-black shrink-0" style={{ background: 'var(--accent-bright)' }}>
-                  <RefreshCw size={12} /> Reconnect
-                </button>
+          {connections.map(c => (
+            <a
+              key={c.platform_type}
+              href="/app?nav=integrations"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] transition-colors"
+            >
+              {c.status === 'checking' ? (
+                <RefreshCw size={12} className="animate-spin text-faint-c shrink-0" />
               ) : (
-                <span className="text-[11px] text-faint-c shrink-0">OK</span>
+                <StatusDot status={c.status} pulse={c.status === 'ok'} />
               )}
-            </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm text-headline truncate">{PLATFORM_LABELS[c.platform_type] || c.platform_type}</div>
+              </div>
+              <span className="text-[11px] text-faint-c shrink-0">
+                {c.status === 'ok' ? 'Connected' : c.status === 'checking' ? 'Checking…' : 'Go to Integrations →'}
+              </span>
+            </a>
           ))}
         </div>
       )}

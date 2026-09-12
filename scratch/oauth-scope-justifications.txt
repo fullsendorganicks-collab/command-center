@@ -1,0 +1,25 @@
+=== SCOPE: .../auth/gmail.readonly ===
+
+SCOPE JUSTIFICATION:
+Command Center displays a summary of the signed-in user's Gmail inbox (sender, subject, snippet, unread count) directly in their dashboard, so they can see recent email activity without switching to a separate Gmail tab. The app only reads message metadata and content to generate this summary. It does not modify, delete, or send any email.
+
+INTENDED DATA USAGE:
+On connecting their Google account, the user's recent inbox messages are fetched read-only via the Gmail API and displayed as a list (sender, subject, short preview) inside the Inbox panel of their dashboard. Email content is fetched live on each view and is not stored permanently in our database. Only the OAuth token needed to make these requests is stored, encrypted, server-side.
+
+
+=== SCOPE: .../auth/analytics.readonly ===
+
+SCOPE JUSTIFICATION:
+Command Center displays Google Analytics traffic metrics (sessions, users, bounce rate, engagement rate) for properties the user owns, inside a unified Properties dashboard panel, so they can monitor site performance alongside their other connected accounts without logging into a separate Analytics account.
+
+INTENDED DATA USAGE:
+When a user connects Google, we make read-only calls to the Analytics Data API for properties they have access to, and render the resulting metrics as charts and summary numbers in the dashboard. No Analytics data is used for any purpose other than display to that same signed-in user.
+
+
+=== SCOPE: .../auth/webmasters.readonly ===
+
+SCOPE JUSTIFICATION:
+Command Center displays Google Search Console performance data (clicks, impressions, search queries) for websites the user has verified ownership of, so they can monitor search visibility from the same dashboard used for email and analytics, instead of a separate tool.
+
+INTENDED DATA USAGE:
+Read-only Search Console data is fetched for sites the signed-in user has verified in their own Search Console account and displayed as a summary panel in their dashboard. This data is not shared with other users or stored beyond what is needed to render the current view.

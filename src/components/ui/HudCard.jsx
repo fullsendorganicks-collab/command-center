@@ -72,7 +72,13 @@ export default function HudCard({ id, title, icon: Icon, accentClass = '', span 
         </div>
       </div>
 
-      <div className="px-4 pb-4" onClick={(e) => { if (!isFocused) e.stopPropagation() }}>
+      {/* Only the title bar expands/focuses the card — the body is just
+          content. Making the body itself clickable-to-focus (a prior
+          version of this) silently ate clicks on anything inside that
+          didn't explicitly stopPropagation, which is how individual items
+          (an email row, a property pill) ended up doing nothing but
+          expanding the whole card instead of their own action. */}
+      <div className="px-4 pb-4">
         {children}
       </div>
     </div>

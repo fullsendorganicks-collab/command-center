@@ -17,7 +17,7 @@ import HomePage from './components/pages/HomePage'
 import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { WorkspaceProvider } from './context/WorkspaceContext'
-import { HEALTH_SUMMARY, CONNECTIONS } from './data/mockData'
+import { useSystemHealth } from './hooks/useSystemHealth'
 
 const PAGES = {
   overview: OverviewPage,
@@ -38,26 +38,38 @@ const PAGE_TITLES = {
 }
 
 function AppShell() {
-  const [nav, setNav] = useState('overview')
+  // Read the initial tab from ?nav=<tab> so links/bookmarks can deep-link
+  // into a specific page (e.g. AddIntegrationCard's "View Integrations"
+  // link, or a notification pointing at Sites) instead of always landing
+  // on Overview. Falls back to 'overview' for an unknown/missing value.
+  const initialNav = new URLSearchParams(window.location.search).get('nav')
+  const [nav, setNav] = useState(PAGES[initialNav] ? initialNav : 'overview')
   const [searchOpen, setSearchOpen] = useState(false)
   const Page = PAGES[nav]
 
-  const staleConnections = CONNECTIONS.filter(c => c.status !== 'ok')
-  // Structured so each notification can navigate somewhere on click —
-  // stale connections point at Sites (where System Status lives) rather
-  // than being inert text.
-  const notifications = staleConnections.map(c => ({
-    text: `${c.account_label} needs attention (${c.status})`,
-    page: 'sites',
-  }))
+  function navigateTo(page) {
+    setNav(page)
+    const url = new URL(window.location.href)
+    url.searchParams.set('nav', page)
+    window.history.replaceState({}, '', url)
+  }
+
+  // Real Google connection status drives the "needs attention" notification
+  // — CONNECTIONS (mock data) previously drove this list, which meant it
+  // could show fabricated stale-connection alerts unrelated to anything
+  // actually true about the account.
+  const { googleConnected, checking } = useSystemHealth()
+  const notifications = (!checking && !googleConnected)
+    ? [{ text: 'Google is not connected — set it up in Settings → Integrations', page: 'integrations' }]
+    : []
 
   return (
     <div className="flex min-h-screen">
       <div className="grid-overlay" />
-      <Sidebar active={nav} onNavigate={setNav} systemOk={HEALTH_SUMMARY.pct >= 85} />
+      <Sidebar active={nav} onNavigate={navigateTo} systemOk={Boolean(googleConnected)} />
 
       <div className="flex-1 min-w-0 flex flex-col relative z-10">
-        <TopBar onOpenSearch={() => setSearchOpen(true)} notifications={notifications} onNavigate={setNav} />
+        <TopBar onOpenSearch={() => setSearchOpen(true)} notifications={notifications} onNavigate={navigateTo} />
         <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6">
           <h1 className="text-headline text-xl font-bold mb-4 md:hidden">{PAGE_TITLES[nav]}</h1>
           <Page />

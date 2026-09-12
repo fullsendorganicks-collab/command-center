@@ -10,8 +10,21 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsI
 
 export const supabaseConfigured = Boolean(url && anonKey)
 
-// When Supabase isn't configured yet, export a stub so the app can still
-// run against mock data without crashing on import.
+// When Supabase isn't configured, `supabase` below is null and the app
+// runs against mock data without crashing on import.
+// Explicit auth options (rather than relying on the SDK's defaults) —
+// the OAuth/magic-link redirect lands on /app with the session in the
+// URL's #hash fragment, and being explicit here avoids a race where
+// AuthContext's getSession()/getUser() call can fire before the client
+// has finished parsing that fragment into a stored session, which
+// surfaces as a confusing "Invalid API key" error on first render.
 export const supabase = supabaseConfigured
-  ? createClient(url, anonKey)
+  ? createClient(url, anonKey, {
+      auth: {
+        detectSessionInUrl: true,
+        persistSession: true,
+        autoRefreshToken: true,
+        flowType: 'implicit',
+      },
+    })
   : null
