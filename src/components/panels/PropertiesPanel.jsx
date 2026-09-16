@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Layers, Plus, ExternalLink, Loader2, RefreshCw } from 'lucide-react'
+import { Layers, Plus, ExternalLink, Loader2, RefreshCw, Link2 } from 'lucide-react'
 import HudCard from '../ui/HudCard'
 import { useFocus } from '../../context/FocusContext'
 import { useWorkspace } from '../../context/WorkspaceContext'
 import { supabase } from '../../lib/supabase'
-import { getSearchConsoleSummary, getGa4Summary, saveGa4PropertyId, hasGoogleConnection } from '../../lib/googleData'
+import { getSearchConsoleSummary, getGa4Summary, saveGa4PropertyId, hasGoogleConnection, buildGoogleDataAuthUrl, getGoogleDataRedirectUri } from '../../lib/googleData'
 
 function StatBlock({ label, value }) {
   return (
@@ -115,9 +115,17 @@ export default function PropertiesPanel() {
     setLoadingData(true)
     setDataError(null)
     Promise.all([
-      getSearchConsoleSummary(workspaceId).catch(e => ({ error: e.message })),
-      getGa4Summary(workspaceId).catch(e => ({ error: e.message })),
+      getSearchConsoleSummary(workspaceId).catch(e => ({ error: e.message, reauthRequired: e.reauthRequired })),
+      getGa4Summary(workspaceId).catch(e => ({ error: e.message, reauthRequired: e.reauthRequired })),
     ]).then(([gscRes, ga4Res]) => {
+      // A revoked/expired refresh token means the stored connection no
+      // longer works — fall back to the "not connected" prompt instead of
+      // leaving a dead-end red error banner forever.
+      if (gscRes.reauthRequired || ga4Res.reauthRequired) {
+        setGoogleConnected(false)
+        setLoadingData(false)
+        return
+      }
       setGsc(gscRes)
       setGa4(ga4Res)
       setLoadingData(false)
@@ -139,6 +147,14 @@ export default function PropertiesPanel() {
   }
 
   const matchingGscSite = gsc?.sites?.find(s => prop && s.siteUrl?.includes(prop.domain))
+
+  function handleConnectGoogle() {
+    try {
+      window.location.href = buildGoogleDataAuthUrl({ workspaceId, redirectUri: getGoogleDataRedirectUri() })
+    } catch (e) {
+      setDataError(e.message)
+    }
+  }
 
   return (
     <HudCard id="properties" title="Your Properties" icon={Layers} accentClass="accent-glow" span="md:col-span-2 xl:col-span-2">
@@ -186,8 +202,15 @@ export default function PropertiesPanel() {
           </div>
 
           {googleConnected === false && (
-            <div className="text-xs text-faint-c py-3 px-3 rounded-lg bg-white/[0.03] mb-3">
-              Connect Google (Settings → Integrations) to pull real Analytics and Search Console data for your sites.
+            <div className="flex items-center justify-between gap-3 text-xs text-faint-c py-3 px-3 rounded-lg bg-white/[0.03] mb-3">
+              <span>Connect Google to pull real Analytics and Search Console data for your sites.</span>
+              <button
+                onClick={handleConnectGoogle}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium text-black shrink-0"
+                style={{ background: 'var(--accent-bright)' }}
+              >
+                <Link2 size={12} /> Connect
+              </button>
             </div>
           )}
 

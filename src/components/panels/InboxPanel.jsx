@@ -44,7 +44,13 @@ export default function InboxPanel() {
     setError(null)
     getGmailSummary(workspaceId)
       .then(setGmail)
-      .catch(e => setError(e.message))
+      .catch(e => {
+        // A revoked/expired refresh token means the stored connection no
+        // longer works — treat it the same as "not connected" so the
+        // Connect button reappears instead of leaving a dead-end error.
+        if (e.reauthRequired) { setConnected(false); return }
+        setError(e.message)
+      })
       .finally(() => setLoading(false))
   }, [connected, workspaceId])
 

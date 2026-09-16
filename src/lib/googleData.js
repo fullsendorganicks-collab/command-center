@@ -77,10 +77,17 @@ async function fetchGoogleResource(workspaceId, resource) {
     body: { workspace_id: workspaceId, resource },
   })
   if (error) {
-    const msg = error.context?.error || error.message || 'Google data request failed.'
-    throw new Error(msg)
+    const body = error.context?.error !== undefined ? error.context : null
+    const msg = body?.error || error.message || 'Google data request failed.'
+    const err = new Error(msg)
+    if (body?.reauth_required) err.reauthRequired = true
+    throw err
   }
-  if (data?.error) throw new Error(data.error)
+  if (data?.error) {
+    const err = new Error(data.error)
+    if (data.reauth_required) err.reauthRequired = true
+    throw err
+  }
   return data
 }
 
