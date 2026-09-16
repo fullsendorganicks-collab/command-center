@@ -11,7 +11,7 @@ import { useFocus } from '../../context/FocusContext'
  * id: unique card id (used for focus + drag + layout persistence)
  * span: optional grid column span classes for the default (non-focused) layout
  */
-export default function HudCard({ id, title, icon: Icon, accentClass = '', span = '', children, className = '' }) {
+export default function HudCard({ id, title, icon: Icon, accentClass = '', span = '', children, className = '', onClose }) {
   const { focusedId, focus, unfocus } = useFocus()
   const isFocused = focusedId === id
   const isDimmed = focusedId !== null && !isFocused
@@ -57,17 +57,29 @@ export default function HudCard({ id, title, icon: Icon, accentClass = '', span 
               <X size={16} className="text-body-c" />
             </button>
           ) : (
-            <button
-              {...attributes}
-              {...listeners}
-              onClick={(e) => e.stopPropagation()}
-              className="p-1.5 -m-1 rounded hover:bg-white/10 cursor-grab active:cursor-grabbing text-faint-c opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-              style={{ touchAction: 'none' }}
-              aria-label="Drag to rearrange"
-              title="Drag to rearrange"
-            >
-              <GripVertical size={16} />
-            </button>
+            <>
+              <button
+                {...attributes}
+                {...listeners}
+                onClick={(e) => e.stopPropagation()}
+                className="p-1.5 -m-1 rounded hover:bg-white/10 cursor-grab active:cursor-grabbing text-faint-c opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                style={{ touchAction: 'none' }}
+                aria-label="Drag to rearrange"
+                title="Drag to rearrange"
+              >
+                <GripVertical size={16} />
+              </button>
+              {onClose && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onClose() }}
+                  className="p-1.5 -m-1 rounded hover:bg-white/10 text-faint-c opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                  aria-label="Close this card"
+                  title="Close"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

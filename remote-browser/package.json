@@ -1,0 +1,14 @@
+{
+  "name": "cc-remote-browser",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "postinstall": "playwright install --with-deps chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0",
+    "ws": "^8.18.0"
+  }
+}

@@ -124,7 +124,7 @@ export default function DashboardGrid({ cards, onDropUrl }) {
             className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium"
             style={{ background: 'var(--accent-bright)', color: 'black' }}
           >
-            <Link2 size={16} /> Drop to add as a tracked site
+            <Link2 size={16} /> Drop to open as a live browser tab
           </div>
         </div>
       )}
