@@ -103,6 +103,20 @@ export default function PropertiesPanel() {
 
   useEffect(() => { loadProperties() }, [loadProperties])
 
+  // A site can also be added from outside this card — dragging a browser
+  // tab onto the dashboard (see DashboardGrid's onDropUrl) inserts
+  // directly into cc_properties and fires this event so the card picks
+  // the new row up and switches to it, instead of only refreshing the
+  // next time this panel happens to remount.
+  useEffect(() => {
+    function onPropertyAdded(e) {
+      loadProperties()
+      if (e.detail?.id) setSelected(e.detail.id)
+    }
+    window.addEventListener('cc:property-added', onPropertyAdded)
+    return () => window.removeEventListener('cc:property-added', onPropertyAdded)
+  }, [loadProperties])
+
   useEffect(() => {
     if (!workspaceId) return
     hasGoogleConnection(workspaceId).then(setGoogleConnected)
