@@ -58,7 +58,11 @@ export async function completeGoogleDataConnection({ code, workspaceId, redirect
     body: { code, workspace_id: workspaceId, redirect_uri: redirectUri },
   })
   if (error) {
-    const msg = error.context?.error || error.message || 'Google connection failed.'
+    // Same fix as fetchGoogleResource below: error.context is a Response,
+    // not a parsed body — must be awaited via .json().
+    let body = null
+    try { body = await error.context?.json?.() } catch { /* body wasn't JSON */ }
+    const msg = body?.error || error.message || 'Google connection failed.'
     throw new Error(msg)
   }
   if (data?.error) throw new Error(data.error)
@@ -77,7 +81,14 @@ async function fetchGoogleResource(workspaceId, resource) {
     body: { workspace_id: workspaceId, resource },
   })
   if (error) {
-    const body = error.context?.error !== undefined ? error.context : null
+    // error.context on a FunctionsHttpError is the raw fetch Response, not
+    // a parsed body — supabase-js does not parse it for you (see its own
+    // FunctionsClient.js doc comment: `await error.context.json()`).
+    // Treating context as an already-parsed object silently swallowed
+    // reauth_required on every call, which is why a revoked Google token
+    // kept showing a dead-end error instead of a Connect button.
+    let body = null
+    try { body = await error.context?.json?.() } catch { /* body wasn't JSON */ }
     const msg = body?.error || error.message || 'Google data request failed.'
     const err = new Error(msg)
     if (body?.reauth_required) err.reauthRequired = true

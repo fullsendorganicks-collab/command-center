@@ -32,8 +32,12 @@ async function callProxy(payload) {
   })
 
   if (error) {
-    // supabase-js surfaces non-2xx as `error`; try to pull the real message
-    const msg = error.context?.error || error.message || 'Claude request failed.'
+    // supabase-js surfaces non-2xx as `error`, but error.context is the raw
+    // Response, not a parsed body — it must be awaited via .json() (see
+    // FunctionsClient.js's own doc comment: `await error.context.json()`).
+    let body = null
+    try { body = await error.context?.json?.() } catch { /* body wasn't JSON */ }
+    const msg = body?.error || error.message || 'Claude request failed.'
     throw new Error(msg)
   }
   if (data?.error) {
