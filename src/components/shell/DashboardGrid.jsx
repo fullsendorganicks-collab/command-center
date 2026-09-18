@@ -40,6 +40,26 @@ export default function DashboardGrid({ cards, onDropUrl }) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(order)) } catch { /* ignore */ }
   }, [order])
 
+  // `order` is only seeded once at mount (from localStorage or the
+  // initial cards list) — cards.map(c => c.id) above is NOT reactive to
+  // `cards` changing later. Remote-browser cards are added dynamically
+  // after a tab is dropped (a new id appears in `cards` well after
+  // mount), so without this, a newly-dropped tab's id never enters
+  // `order` and orderedCards' `.filter(Boolean)` below silently drops it
+  // — the row gets created, the drop "succeeds," and nothing ever
+  // renders. This keeps `order` in sync: existing positions are kept,
+  // any new id is appended, any id that's gone is removed.
+  useEffect(() => {
+    setOrder(prev => {
+      const currentIds = cards.map(c => c.id)
+      const kept = prev.filter(id => currentIds.includes(id))
+      const added = currentIds.filter(id => !kept.includes(id))
+      if (added.length === 0 && kept.length === prev.length) return prev
+      return [...kept, ...added]
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cards.map(c => c.id).join(',')])
+
   // PointerSensor covers mouse; TouchSensor is needed separately on
   // mobile because otherwise the browser's native scroll gesture wins
   // the touch before dnd-kit's pointer listener ever fires. A short

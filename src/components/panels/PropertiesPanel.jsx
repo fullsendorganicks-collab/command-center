@@ -273,7 +273,17 @@ export default function PropertiesPanel() {
               </div>
 
               <div>
-                <div className="text-[11px] text-faint-c uppercase tracking-wide mb-1.5">Google Analytics (GA4)</div>
+                <div className="text-[11px] text-faint-c uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                  <span>Google Analytics (GA4)</span>
+                  {prop.analytics_source_id && (
+                    <button
+                      onClick={() => { setGa4Input(''); saveGa4PropertyId(prop.id, null).then(loadProperties) }}
+                      className="normal-case text-[11px] text-faint-c hover:text-headline transition-colors"
+                    >
+                      Change
+                    </button>
+                  )}
+                </div>
                 {prop.analytics_source_id ? (
                   ga4?.note ? (
                     <div className="text-xs text-faint-c">GA4 property <span className="text-headline">{prop.analytics_source_id}</span> saved. {ga4.note}</div>
