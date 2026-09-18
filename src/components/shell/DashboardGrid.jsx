@@ -17,6 +17,8 @@ const STORAGE_KEY = 'cc_card_order'
  * text/uri-list + text/x-moz-url/text/plain, not a dnd-kit drag — this is
  * a separate native HTML5 drag-and-drop listener on the whole grid).
  */
+const HTML5_DND_TYPES = ['text/uri-list', 'text/plain', 'text/x-moz-url']
+
 export default function DashboardGrid({ cards, onDropUrl }) {
   const { focusedId } = useFocus()
   const defaultOrder = cards.map(c => c.id)
@@ -82,39 +84,52 @@ export default function DashboardGrid({ cards, onDropUrl }) {
     }
   }
 
-  function handleDragEnter(e) {
+  // Bound on `window`, not a child div — a fixed, full-viewport overlay
+  // rendered to show drag feedback sits on top of everything while a drag
+  // is in progress, and browsers are inconsistent about whether a
+  // `pointer-events: none` element still receives native HTML5
+  // dragover/drop events (unlike click, which reliably passes through).
+  // Binding on window sidesteps that entirely: every drag/drop event over
+  // the page bubbles to window regardless of what's rendered on top, so
+  // there is no element that can ever end up shadowing the drop target.
+  useEffect(() => {
     if (!onDropUrl) return
-    if (!Array.from(e.dataTransfer.types).some(t => t === 'text/uri-list' || t === 'text/plain')) return
-    dragCounter.current += 1
-    setDragOver(true)
-  }
-  function handleDragOver(e) {
-    if (!onDropUrl) return
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'copy'
-  }
-  function handleDragLeave() {
-    if (!onDropUrl) return
-    dragCounter.current -= 1
-    if (dragCounter.current <= 0) { dragCounter.current = 0; setDragOver(false) }
-  }
-  function handleDrop(e) {
-    if (!onDropUrl) return
-    e.preventDefault()
-    dragCounter.current = 0
-    setDragOver(false)
-    const dropped = extractDroppedUrl(e.dataTransfer)
-    if (dropped) onDropUrl(dropped)
-  }
+
+    function onWindowDragEnter(e) {
+      if (!Array.from(e.dataTransfer.types).some(t => HTML5_DND_TYPES.includes(t))) return
+      dragCounter.current += 1
+      setDragOver(true)
+    }
+    function onWindowDragOver(e) {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'copy'
+    }
+    function onWindowDragLeave() {
+      dragCounter.current -= 1
+      if (dragCounter.current <= 0) { dragCounter.current = 0; setDragOver(false) }
+    }
+    function onWindowDrop(e) {
+      e.preventDefault()
+      dragCounter.current = 0
+      setDragOver(false)
+      const dropped = extractDroppedUrl(e.dataTransfer)
+      if (dropped) onDropUrl(dropped)
+    }
+
+    window.addEventListener('dragenter', onWindowDragEnter)
+    window.addEventListener('dragover', onWindowDragOver)
+    window.addEventListener('dragleave', onWindowDragLeave)
+    window.addEventListener('drop', onWindowDrop)
+    return () => {
+      window.removeEventListener('dragenter', onWindowDragEnter)
+      window.removeEventListener('dragover', onWindowDragOver)
+      window.removeEventListener('dragleave', onWindowDragLeave)
+      window.removeEventListener('drop', onWindowDrop)
+    }
+  }, [onDropUrl])
 
   return (
-    <div
-      onDragEnter={handleDragEnter}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className="relative"
-    >
+    <div className="relative">
       {dragOver && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"

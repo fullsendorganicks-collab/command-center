@@ -102,9 +102,42 @@ async function fetchGoogleResource(workspaceId, resource) {
   return data
 }
 
+async function fetchGoogleResourceWithParams(workspaceId, resource, params) {
+  const { data, error } = await supabase.functions.invoke('cc-google-data', {
+    body: { workspace_id: workspaceId, resource, ...params },
+  })
+  if (error) {
+    let body = null
+    try { body = await error.context?.json?.() } catch { /* body wasn't JSON */ }
+    const msg = body?.error || error.message || 'Google data request failed.'
+    const err = new Error(msg)
+    if (body?.reauth_required) err.reauthRequired = true
+    throw err
+  }
+  if (data?.error) {
+    const err = new Error(data.error)
+    if (data.reauth_required) err.reauthRequired = true
+    throw err
+  }
+  return data
+}
+
 export const getGmailSummary = (workspaceId) => fetchGoogleResource(workspaceId, 'gmail_summary')
 export const getSearchConsoleSummary = (workspaceId) => fetchGoogleResource(workspaceId, 'search_console_summary')
-export const getGa4Summary = (workspaceId) => fetchGoogleResource(workspaceId, 'ga4_summary')
+
+/**
+ * GA4's Data API (what actually returns sessions/users/bounce rate) is
+ * read by numeric Property ID, NOT the "G-XXXXXXXXXX" Measurement ID
+ * gtag.js uses to send data in — different IDs, same GA4 property, two
+ * different purposes. property_id here must be the numeric one.
+ */
+export const getGa4Summary = (workspaceId, propertyId) =>
+  fetchGoogleResourceWithParams(workspaceId, 'ga4_summary', { property_id: propertyId })
+
+/** A GA4 Property ID is numeric only — a "G-..." value is a Measurement ID (used by gtag.js to send data), not what the Data API reads from. */
+export function isValidGa4PropertyId(value) {
+  return /^\d+$/.test(String(value || '').trim())
+}
 
 /**
  * GA4 needs a per-site numeric Property ID (found in GA4 Admin > Property

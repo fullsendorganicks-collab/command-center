@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Bot, Terminal, Users2, Plus, ExternalLink, MessageSquare } from 'lucide-react'
 import HudCard from '../ui/HudCard'
 import { useFocus } from '../../context/FocusContext'
-import { useClaudeChat, getLastSeenAt, markSeenNow } from '../../hooks/useClaudeChat'
+import { useClaudeChat, markSeenNow } from '../../hooks/useClaudeChat'
 import ClaudeChatView from './ClaudeChatView'
 import { generateBriefing, briefingToPrompt } from '../../lib/briefing'
 import { useWorkspace } from '../../context/WorkspaceContext'
@@ -40,19 +40,23 @@ function ClaudeTab() {
 
   useEffect(() => { updateActiveMessages(chat.messages) }, [chat.messages]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // proactive briefing on first open of this session
+  // proactive briefing on first open of this session — built fresh from
+  // real live data (currently: real Gmail unread count/subjects) every
+  // time, not a cached/static message, so it reflects what's actually
+  // true right now rather than repeating stale fixture data.
   useEffect(() => {
     if (!workspaceId) return
     if (chat.messages.length > 0) return
-    const lastSeen = getLastSeenAt()
-    const briefing = generateBriefing({ lastSeenAt: lastSeen })
-    const prompt = briefingToPrompt(briefing)
-    if (prompt) {
-      chat.send('(session start)', { system: prompt })
-    }
-    markSeenNow()
+    let cancelled = false
+    generateBriefing({ workspaceId }).then(briefing => {
+      if (cancelled) return
+      const prompt = briefingToPrompt(briefing)
+      if (prompt) chat.send('(session start)', { system: prompt })
+      markSeenNow()
+    })
+    return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [workspaceId])
 
   return (
     <div className="flex gap-4 h-[60vh]">

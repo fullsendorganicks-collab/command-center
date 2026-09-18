@@ -1,37 +1,39 @@
-import { CONNECTIONS, INBOX, SOCIAL_FEED, CURRENT_USER } from '../data/mockData'
+import { CURRENT_USER } from '../data/mockData'
+import { hasGoogleConnection, getGmailSummary } from './googleData'
 
 /**
- * generate_briefing() — builds a structured summary of what's new since
- * last_seen_at, to be fed to Claude as context so it phrases the greeting
- * naturally rather than reciting a template.
- *
- * Real version (once Supabase + live connections exist) would query:
- *  - unread email count across all Gmail connections
- *  - social events where created_at > last_seen_at
- *  - connections where token_expires_at < now() + 72h OR status != 'ok'
- *
- * This mock version approximates the same shape from seed data so the UI
- * and Claude prompt wiring can be built and tested before real data exists.
+ * generateBriefing() — builds a structured summary of what's new, to be
+ * fed to Claude as context so it phrases the greeting naturally rather
+ * than reciting a template. Pulls real Gmail data via the same
+ * cc-google-data edge function the Inbox card uses — no mock/social data
+ * mixed in, since Social has no real integration yet (an earlier version
+ * of this used fixed mockData.js fixtures, which is why the greeting
+ * repeated the same fake names/subjects every session regardless of what
+ * was actually happening).
  */
-export function generateBriefing({ lastSeenAt } = {}) {
-  const unread = INBOX.filter(e => e.unread)
-  const mostRecentUnread = unread[0]
-
-  const staleConnections = CONNECTIONS.filter(c => c.status !== 'ok')
-
-  // "new since last visit" — mock treats the whole feed as recent since we
-  // have no real timestamps to diff against last_seen_at yet.
-  const recentSocial = lastSeenAt ? SOCIAL_FEED.slice(0, 2) : SOCIAL_FEED.slice(0, 1)
-
+export async function generateBriefing({ workspaceId } = {}) {
   const parts = []
-  if (unread.length > 0) {
-    parts.push(`${unread.length} unread email${unread.length === 1 ? '' : 's'}, most recent from ${mostRecentUnread.sender} ("${mostRecentUnread.subject}")`)
-  }
-  if (recentSocial.length > 0) {
-    parts.push(`Recent social activity: ${recentSocial.map(f => `${f.account} — ${f.text}`).join('; ')}`)
-  }
-  if (staleConnections.length > 0) {
-    parts.push(`Connections needing attention: ${staleConnections.map(c => `${c.account_label} (${c.status})`).join(', ')}`)
+
+  if (workspaceId) {
+    const connected = await hasGoogleConnection(workspaceId)
+    if (connected) {
+      try {
+        const gmail = await getGmailSummary(workspaceId)
+        if (gmail.unread_count > 0) {
+          const mostRecent = gmail.recent?.[0]
+          parts.push(
+            mostRecent
+              ? `${gmail.unread_count} unread email${gmail.unread_count === 1 ? '' : 's'} in ${gmail.account}, most recent from ${mostRecent.from} ("${mostRecent.subject}")`
+              : `${gmail.unread_count} unread email${gmail.unread_count === 1 ? '' : 's'} in ${gmail.account}`
+          )
+        }
+      } catch {
+        // Gmail fetch failing (e.g. a revoked token) shouldn't block the
+        // greeting entirely — it just means no email line gets added.
+      }
+    } else {
+      parts.push('Gmail is not connected yet — connect it from the Inbox card to get real email summaries here.')
+    }
   }
 
   return {

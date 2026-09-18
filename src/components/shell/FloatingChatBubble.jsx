@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Bot, X } from 'lucide-react'
-import { useClaudeChat, getLastSeenAt, markSeenNow } from '../../hooks/useClaudeChat'
+import { useClaudeChat, markSeenNow } from '../../hooks/useClaudeChat'
 import ClaudeChatView from '../panels/ClaudeChatView'
 import { generateBriefing, briefingToPrompt } from '../../lib/briefing'
 import { useWorkspace } from '../../context/WorkspaceContext'
@@ -15,11 +15,11 @@ export default function FloatingChatBubble() {
     if (!open || briefed || !workspaceId) return
     setBriefed(true)
     if (chat.messages.length === 0) {
-      const lastSeen = getLastSeenAt()
-      const briefing = generateBriefing({ lastSeenAt: lastSeen })
-      const prompt = briefingToPrompt(briefing)
-      if (prompt) chat.send('(session start)', { system: prompt })
-      markSeenNow()
+      generateBriefing({ workspaceId }).then(briefing => {
+        const prompt = briefingToPrompt(briefing)
+        if (prompt) chat.send('(session start)', { system: prompt })
+        markSeenNow()
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])

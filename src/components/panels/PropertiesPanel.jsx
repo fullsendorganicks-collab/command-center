@@ -4,7 +4,7 @@ import HudCard from '../ui/HudCard'
 import { useFocus } from '../../context/FocusContext'
 import { useWorkspace } from '../../context/WorkspaceContext'
 import { supabase } from '../../lib/supabase'
-import { getSearchConsoleSummary, getGa4Summary, saveGa4PropertyId, hasGoogleConnection, buildGoogleDataAuthUrl, getGoogleDataRedirectUri } from '../../lib/googleData'
+import { getSearchConsoleSummary, getGa4Summary, saveGa4PropertyId, hasGoogleConnection, buildGoogleDataAuthUrl, getGoogleDataRedirectUri, isValidGa4PropertyId } from '../../lib/googleData'
 
 function StatBlock({ label, value }) {
   return (
@@ -128,14 +128,19 @@ export default function PropertiesPanel() {
     if (!googleConnected || !workspaceId) return
     setLoadingData(true)
     setDataError(null)
-    Promise.all([
-      getSearchConsoleSummary(workspaceId).catch(e => ({ error: e.message, reauthRequired: e.reauthRequired })),
-      getGa4Summary(workspaceId).catch(e => ({ error: e.message, reauthRequired: e.reauthRequired })),
-    ]).then(([gscRes, ga4Res]) => {
+    const calls = [getSearchConsoleSummary(workspaceId).catch(e => ({ error: e.message, reauthRequired: e.reauthRequired }))]
+    // GA4 is per-property, not per-workspace — only fetch it once a
+    // property is selected and has a valid numeric Property ID saved.
+    calls.push(
+      prop?.analytics_source_id
+        ? getGa4Summary(workspaceId, prop.analytics_source_id).catch(e => ({ error: e.message, reauthRequired: e.reauthRequired }))
+        : Promise.resolve(null)
+    )
+    Promise.all(calls).then(([gscRes, ga4Res]) => {
       // A revoked/expired refresh token means the stored connection no
       // longer works — fall back to the "not connected" prompt instead of
       // leaving a dead-end red error banner forever.
-      if (gscRes.reauthRequired || ga4Res.reauthRequired) {
+      if (gscRes.reauthRequired || ga4Res?.reauthRequired) {
         setGoogleConnected(false)
         setLoadingData(false)
         return
@@ -144,13 +149,19 @@ export default function PropertiesPanel() {
       setGa4(ga4Res)
       setLoadingData(false)
     })
-  }, [googleConnected, workspaceId])
+  }, [googleConnected, workspaceId, prop?.id, prop?.analytics_source_id])
 
   async function handleSaveGa4() {
     if (!prop || !ga4Input.trim()) return
+    const trimmed = ga4Input.trim()
+    if (!isValidGa4PropertyId(trimmed)) {
+      setDataError(`"${trimmed}" looks like a Measurement ID (starts with G-), not a Property ID. GA4 → Admin → Property Settings → Property ID is a plain number like 123456789.`)
+      return
+    }
     setSavingGa4(true)
+    setDataError(null)
     try {
-      await saveGa4PropertyId(prop.id, ga4Input.trim())
+      await saveGa4PropertyId(prop.id, trimmed)
       await loadProperties()
       setGa4Input('')
     } catch (e) {
@@ -287,6 +298,9 @@ export default function PropertiesPanel() {
                       Save
                     </button>
                   </div>
+                )}
+                {dataError && (
+                  <div className="text-[11px] mt-1.5" style={{ color: 'var(--red)' }}>{dataError}</div>
                 )}
                 <div className="text-[10px] text-faint-c mt-1.5">
                   Find this in GA4 → Admin → Property Settings → Property ID.
