@@ -4,7 +4,7 @@ import HudCard from '../ui/HudCard'
 import { useFocus } from '../../context/FocusContext'
 import { useWorkspace } from '../../context/WorkspaceContext'
 import { supabase } from '../../lib/supabase'
-import { getSearchConsoleSummary, getGa4Summary, saveGa4PropertyId, hasGoogleConnection, buildGoogleDataAuthUrl, getGoogleDataRedirectUri, isValidGa4PropertyId } from '../../lib/googleData'
+import { getSearchConsoleSummary, getGa4Summary, getGa4Properties, saveGa4PropertyId, hasGoogleConnection, buildGoogleDataAuthUrl, getGoogleDataRedirectUri } from '../../lib/googleData'
 
 function StatBlock({ label, value }) {
   return (
@@ -83,6 +83,7 @@ export default function PropertiesPanel() {
   const [loadingData, setLoadingData] = useState(false)
   const [dataError, setDataError] = useState(null)
 
+  const [ga4Properties, setGa4Properties] = useState(null) // null = not fetched yet, [] = fetched, none found
   const [ga4Input, setGa4Input] = useState('')
   const [savingGa4, setSavingGa4] = useState(false)
 
@@ -151,17 +152,22 @@ export default function PropertiesPanel() {
     })
   }, [googleConnected, workspaceId, prop?.id, prop?.analytics_source_id])
 
-  async function handleSaveGa4() {
-    if (!prop || !ga4Input.trim()) return
-    const trimmed = ga4Input.trim()
-    if (!isValidGa4PropertyId(trimmed)) {
-      setDataError(`"${trimmed}" looks like a Measurement ID (starts with G-), not a Property ID. GA4 → Admin → Property Settings → Property ID is a plain number like 123456789.`)
-      return
-    }
+  // Fetches the account's real GA4 properties once, so the user picks
+  // their site by name from a dropdown instead of hunting for a numeric
+  // Property ID in GA4's own settings screen and pasting it in.
+  useEffect(() => {
+    if (!googleConnected || !workspaceId || ga4Properties !== null) return
+    getGa4Properties(workspaceId)
+      .then(res => setGa4Properties(res.properties || []))
+      .catch(() => setGa4Properties([]))
+  }, [googleConnected, workspaceId, ga4Properties])
+
+  async function handleSaveGa4(propertyId) {
+    if (!prop || !propertyId) return
     setSavingGa4(true)
     setDataError(null)
     try {
-      await saveGa4PropertyId(prop.id, trimmed)
+      await saveGa4PropertyId(prop.id, propertyId)
       await loadProperties()
       setGa4Input('')
     } catch (e) {
@@ -281,17 +287,29 @@ export default function PropertiesPanel() {
                       <StatBlock label="Engagement" value={ga4?.engagement_rate != null ? `${Math.round(ga4.engagement_rate * 100)}%` : '—'} />
                     </div>
                   )
+                ) : ga4Properties === null ? (
+                  <div className="text-xs text-faint-c flex items-center gap-2">
+                    <Loader2 size={12} className="animate-spin" /> Loading your GA4 properties…
+                  </div>
+                ) : ga4Properties.length === 0 ? (
+                  <div className="text-xs text-faint-c">
+                    No GA4 properties found on this Google account — make sure you're connected with the account that has access to this site's Google Analytics.
+                  </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <input
+                    <select
                       value={ga4Input}
                       onChange={(e) => setGa4Input(e.target.value)}
-                      placeholder="GA4 Property ID (e.g. 123456789)"
-                      className="flex-1 rounded-lg bg-white/[0.04] border border-white/10 px-3 py-1.5 text-xs text-headline placeholder:text-faint-c focus:outline-none focus:border-[var(--accent)]"
-                    />
+                      className="flex-1 rounded-lg bg-white/[0.04] border border-white/10 px-3 py-1.5 text-xs text-headline focus:outline-none focus:border-[var(--accent)]"
+                    >
+                      <option value="">Select your GA4 property…</option>
+                      {ga4Properties.map(p => (
+                        <option key={p.id} value={p.id}>{p.name} ({p.account_name})</option>
+                      ))}
+                    </select>
                     <button
-                      onClick={handleSaveGa4}
-                      disabled={savingGa4 || !ga4Input.trim()}
+                      onClick={() => handleSaveGa4(ga4Input)}
+                      disabled={savingGa4 || !ga4Input}
                       className="text-xs px-3 py-1.5 rounded-lg font-medium text-black disabled:opacity-50 shrink-0"
                       style={{ background: 'var(--accent-bright)' }}
                     >
@@ -302,9 +320,6 @@ export default function PropertiesPanel() {
                 {dataError && (
                   <div className="text-[11px] mt-1.5" style={{ color: 'var(--red)' }}>{dataError}</div>
                 )}
-                <div className="text-[10px] text-faint-c mt-1.5">
-                  Find this in GA4 → Admin → Property Settings → Property ID.
-                </div>
               </div>
             </>
           )}

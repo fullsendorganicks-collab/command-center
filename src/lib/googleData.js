@@ -134,6 +134,9 @@ export const getSearchConsoleSummary = (workspaceId) => fetchGoogleResource(work
 export const getGa4Summary = (workspaceId, propertyId) =>
   fetchGoogleResourceWithParams(workspaceId, 'ga4_summary', { property_id: propertyId })
 
+/** Lists every GA4 property this Google account can see, for a picker UI — see cc-google-data's ga4_properties resource. */
+export const getGa4Properties = (workspaceId) => fetchGoogleResource(workspaceId, 'ga4_properties')
+
 /** A GA4 Property ID is numeric only — a "G-..." value is a Measurement ID (used by gtag.js to send data), not what the Data API reads from. */
 export function isValidGa4PropertyId(value) {
   return /^\d+$/.test(String(value || '').trim())
