@@ -66,8 +66,16 @@ export default function OverviewPage() {
     ...remoteTabs.map(tab => ({
       id: `remote-${tab.id}`,
       render: () => (
+        // HudCard's id prop drives both useFocus AND dnd-kit's
+        // useSortable — it must exactly match the id this card was
+        // registered under in DashboardGrid's `order`/SortableContext
+        // (the same `remote-${tab.id}` prefix used above), or dnd-kit
+        // never mounts it into the sortable list correctly. Passing the
+        // raw tab.id here (no prefix) was the actual reason a dropped
+        // tab's row existed in the database but never visually appeared.
         <RemoteBrowserCard
-          id={tab.id}
+          id={`remote-${tab.id}`}
+          sessionId={tab.id}
           title={tab.title}
           startUrl={tab.start_url}
           onClose={() => handleCloseRemoteTab(tab.id)}

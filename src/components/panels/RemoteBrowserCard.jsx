@@ -15,7 +15,16 @@ import HudCard from '../ui/HudCard'
 // backend. Until it's deployed and configured, this card shows a clear
 // "not connected" state rather than silently failing.
 
-export default function RemoteBrowserCard({ id, title, startUrl, onClose }) {
+// `id` drives HudCard's focus/drag-sort identity and must match exactly
+// what this card was registered under in DashboardGrid's order/
+// SortableContext (the caller's `remote-${tab.id}` prefix). `sessionId`
+// is the separate, unprefixed identity the remote-browser backend
+// tracks its Chromium context under — deliberately kept as its own prop
+// instead of reusing `id`, since collapsing the two together is exactly
+// what caused a dropped tab's card to silently never mount (dnd-kit
+// registered it under a different id than the grid's SortableContext
+// items list expected).
+export default function RemoteBrowserCard({ id, sessionId, title, startUrl, onClose }) {
   const canvasRef = useRef(null)
   const wsRef = useRef(null)
   const imgRef = useRef(new Image())
@@ -28,7 +37,7 @@ export default function RemoteBrowserCard({ id, title, startUrl, onClose }) {
   useEffect(() => {
     if (!backendUrl || !token) { setStatus('unconfigured'); return }
 
-    const wsUrl = `${backendUrl.replace(/^http/, 'ws')}/session?token=${encodeURIComponent(token)}&sessionId=${encodeURIComponent(id)}&url=${encodeURIComponent(startUrl)}`
+    const wsUrl = `${backendUrl.replace(/^http/, 'ws')}/session?token=${encodeURIComponent(token)}&sessionId=${encodeURIComponent(sessionId)}&url=${encodeURIComponent(startUrl)}`
     const ws = new WebSocket(wsUrl)
     wsRef.current = ws
 
@@ -58,7 +67,7 @@ export default function RemoteBrowserCard({ id, title, startUrl, onClose }) {
       try { ws.send(JSON.stringify({ type: 'close' })) } catch { /* already gone */ }
       ws.close()
     }
-  }, [backendUrl, token, id, startUrl])
+  }, [backendUrl, token, sessionId, startUrl])
 
   const send = useCallback((msg) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify(msg))
