@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable'
-import { Link2 } from 'lucide-react'
+import { Link2, AlertTriangle } from 'lucide-react'
 import { useFocus } from '../../context/FocusContext'
+import ErrorBoundary from './ErrorBoundary'
 
 const STORAGE_KEY = 'cc_card_order'
 
@@ -168,7 +169,14 @@ export default function DashboardGrid({ cards, onDropUrl }) {
           <div className={`grid gap-4 md:gap-5 ${focusedId ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3 auto-rows-min'}`}>
             {orderedCards.map(card => (
               <div key={card.id} className={focusedId && focusedId !== card.id ? 'hidden md:block' : ''}>
-                {card.render()}
+                <ErrorBoundary fallback={(error) => (
+                  <div className="hud-card p-4 text-xs" style={{ color: 'var(--red)' }}>
+                    <div className="flex items-center gap-1.5 mb-1"><AlertTriangle size={13} /> This card crashed</div>
+                    {error?.message || String(error)}
+                  </div>
+                )}>
+                  {card.render()}
+                </ErrorBoundary>
               </div>
             ))}
           </div>

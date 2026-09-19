@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Sidebar from './components/shell/Sidebar'
+import ErrorBoundary from './components/shell/ErrorBoundary'
 import TopBar from './components/shell/TopBar'
 import SearchModal from './components/shell/SearchModal'
 import FloatingChatBubble from './components/shell/FloatingChatBubble'
@@ -72,7 +73,13 @@ function AppShell() {
         <TopBar onOpenSearch={() => setSearchOpen(true)} notifications={notifications} onNavigate={navigateTo} />
         <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6">
           <h1 className="text-headline text-xl font-bold mb-4 md:hidden">{PAGE_TITLES[nav]}</h1>
-          <Page />
+          <ErrorBoundary key={nav} fallback={(error) => (
+            <div className="text-xs px-3 py-3 rounded-lg bg-white/[0.03]" style={{ color: 'var(--red)' }}>
+              This page hit an error: {error?.message || String(error)}
+            </div>
+          )}>
+            <Page />
+          </ErrorBoundary>
         </main>
       </div>
 
