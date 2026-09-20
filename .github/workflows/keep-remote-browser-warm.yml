@@ -1,0 +1,19 @@
+name: Keep remote-browser warm
+
+# Render's free web service tier sleeps after ~15 minutes idle and can take
+# 30-60s to wake from a cold start — long enough that a browser's default
+# WebSocket timeout gives up before the handshake completes (confirmed live:
+# a cold connection took a full 60s). Render's own cron jobs have no free
+# tier at all, so this uses GitHub Actions' free scheduled-workflow minutes
+# instead — $0, no separate service to pay for or maintain.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping cc-remote-browser health endpoint
+        run: curl -sf --max-time 90 https://cc-remote-browser.onrender.com/health

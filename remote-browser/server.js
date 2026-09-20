@@ -66,7 +66,12 @@ async function destroySession(sessionId) {
 
 const server = http.createServer((req, res) => {
   if (req.url === '/health') {
-    res.writeHead(200, { 'content-type': 'application/json' })
+    // The frontend fetches this cross-origin (commandcenter.alloceraintelligence.com
+    // -> cc-remote-browser.onrender.com) as a pre-flight "is the server
+    // actually awake yet" check before opening the WebSocket — without
+    // CORS headers here the fetch fails silently in the browser, distinct
+    // from the token-gated /session WebSocket route which doesn't need them.
+    res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' })
     res.end(JSON.stringify({ ok: true, sessions: sessions.size, maxSessions: MAX_CONCURRENT_SESSIONS }))
     return
   }

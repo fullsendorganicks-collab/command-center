@@ -24,12 +24,24 @@ import HudCard from '../ui/HudCard'
 // what caused a dropped tab's card to silently never mount (dnd-kit
 // registered it under a different id than the grid's SortableContext
 // items list expected).
+// Render's free web service tier sleeps after ~15 min idle. A cold
+// wake-up was measured live (raw WebSocket handshake via curl) at a full
+// 60 seconds — long enough that browsers/most WS clients give up with a
+// generic error well before the connection ever succeeds, which is why
+// "Could not reach the server" fired instantly on every card even though
+// the server itself was fine, just slow to wake. WAKE_TIMEOUT_MS is
+// deliberately generous (90s) so a real cold start has room to finish;
+// PREFLIGHT_POLL_MS drives a visible countdown instead of a silent hang.
+const WAKE_TIMEOUT_MS = 90_000
+const PREFLIGHT_POLL_MS = 1_000
+
 export default function RemoteBrowserCard({ id, sessionId, title, startUrl, onClose }) {
   const canvasRef = useRef(null)
   const wsRef = useRef(null)
   const imgRef = useRef(new Image())
-  const [status, setStatus] = useState('connecting') // connecting | live | error | unconfigured
+  const [status, setStatus] = useState('connecting') // waking | connecting | live | error | unconfigured
   const [error, setError] = useState(null)
+  const [elapsedMs, setElapsedMs] = useState(0)
   // Bumped to force the connect effect to re-run without changing any of
   // its real dependencies — the client-facing "Retry" button for when a
   // session errors out (server was asleep, hit capacity, network blip)
@@ -42,58 +54,104 @@ export default function RemoteBrowserCard({ id, sessionId, title, startUrl, onCl
 
   useEffect(() => {
     if (!backendUrl || !token) { setStatus('unconfigured'); return }
-    setStatus('connecting')
+    setStatus('waking')
     setError(null)
+    setElapsedMs(0)
+
+    let cancelled = false
+    let ws = null
+    const startedAt = Date.now()
+    const tickInterval = setInterval(() => {
+      if (!cancelled) setElapsedMs(Date.now() - startedAt)
+    }, PREFLIGHT_POLL_MS)
 
     // The env var this reads (VITE_REMOTE_BROWSER_URL) was stored without
     // a scheme ("cc-remote-browser.onrender.com" instead of
-    // "https://cc-remote-browser.onrender.com"), which the old
-    // backendUrl.replace(/^http/, 'ws') silently no-opped on — producing
-    // a schemeless string that `new WebSocket()` mangled into an invalid
-    // scheme ("ttps") rather than throwing something diagnosable. Using
-    // the URL API instead handles a missing scheme, a trailing slash, or
+    // "https://cc-remote-browser.onrender.com"), which an earlier
+    // backendUrl.replace(/^http/, 'ws') silently no-opped on. Using the
+    // URL API instead handles a missing scheme, a trailing slash, or
     // either http/https correctly no matter how the env var is set.
-    let wsUrl
+    let httpBase, wsUrl
     try {
-      const withScheme = /^https?:\/\//.test(backendUrl) ? backendUrl : `https://${backendUrl}`
-      const parsed = new URL(withScheme)
+      httpBase = /^https?:\/\//.test(backendUrl) ? backendUrl : `https://${backendUrl}`
+      const parsed = new URL(httpBase)
       parsed.protocol = parsed.protocol === 'http:' ? 'ws:' : 'wss:'
       parsed.pathname = '/session'
       parsed.search = new URLSearchParams({ token, sessionId, url: startUrl }).toString()
       wsUrl = parsed.toString()
     } catch (e) {
+      clearInterval(tickInterval)
       setStatus('error')
       setError(`Remote browser server URL is misconfigured: ${e.message}`)
       return
     }
-    const ws = new WebSocket(wsUrl)
-    wsRef.current = ws
 
-    ws.onopen = () => setStatus('connecting')
-    ws.onerror = () => { setStatus('error'); setError('Could not reach the remote browser server.') }
-    ws.onclose = (e) => {
-      if (e.code === 4029) { setStatus('error'); setError('The remote browser is at capacity (free-tier limit: 1 session at a time). Close another remote tab and try again.') }
-      else if (status !== 'error') { setStatus('error'); setError('Session ended.') }
-    }
-    ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data)
-      if (msg.type === 'ready') {
-        setStatus('live')
-      } else if (msg.type === 'frame') {
-        const img = imgRef.current
-        img.onload = () => {
-          const canvas = canvasRef.current
-          if (!canvas) return
-          const ctx = canvas.getContext('2d')
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-        }
-        img.src = `data:image/jpeg;base64,${msg.data}`
+    // A pre-flight plain HTTP GET to /health, retried with a generous
+    // overall budget, before ever opening the WebSocket. This is what
+    // actually solves the cold-start problem: it's what proves the
+    // server has finished waking up (Render fully boots the instance to
+    // answer any HTTP request, WebSocket included), and it drives a real
+    // "waking up… Ns" indicator instead of an opaque hang on the WS
+    // handshake itself, which browsers don't expose progress for.
+    async function waitForServerAwake() {
+      const deadline = Date.now() + WAKE_TIMEOUT_MS
+      while (Date.now() < deadline) {
+        if (cancelled) return false
+        try {
+          const res = await fetch(`${httpBase.replace(/\/$/, '')}/health`, { signal: AbortSignal.timeout(5000) })
+          if (res.ok) return true
+        } catch { /* not awake yet, or a transient network hiccup — keep polling */ }
+        await new Promise(r => setTimeout(r, PREFLIGHT_POLL_MS))
       }
+      return false
     }
+
+    ;(async () => {
+      const awake = await waitForServerAwake()
+      if (cancelled) return
+      if (!awake) {
+        clearInterval(tickInterval)
+        setStatus('error')
+        setError(`The remote browser server didn't wake up in time (waited ${Math.round(WAKE_TIMEOUT_MS / 1000)}s). It's likely just slow on this free hosting tier — try again in a moment.`)
+        return
+      }
+
+      setStatus('connecting')
+      ws = new WebSocket(wsUrl)
+      wsRef.current = ws
+
+      ws.onopen = () => setStatus('connecting')
+      ws.onerror = () => { if (!cancelled) { setStatus('error'); setError('Could not reach the remote browser server.') } }
+      ws.onclose = (e) => {
+        if (cancelled) return
+        if (e.code === 4029) { setStatus('error'); setError('The remote browser is at capacity (free-tier limit: 1 session at a time). Close another remote tab and try again.') }
+        else { setStatus('error'); setError('Session ended.') }
+      }
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data)
+        if (msg.type === 'ready') {
+          clearInterval(tickInterval)
+          setStatus('live')
+        } else if (msg.type === 'frame') {
+          const img = imgRef.current
+          img.onload = () => {
+            const canvas = canvasRef.current
+            if (!canvas) return
+            const ctx = canvas.getContext('2d')
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+          }
+          img.src = `data:image/jpeg;base64,${msg.data}`
+        }
+      }
+    })()
 
     return () => {
-      try { ws.send(JSON.stringify({ type: 'close' })) } catch { /* already gone */ }
-      ws.close()
+      cancelled = true
+      clearInterval(tickInterval)
+      if (ws) {
+        try { ws.send(JSON.stringify({ type: 'close' })) } catch { /* already gone */ }
+        ws.close()
+      }
     }
   }, [backendUrl, token, sessionId, startUrl, retryKey])
 
@@ -122,6 +180,21 @@ export default function RemoteBrowserCard({ id, sessionId, title, startUrl, onCl
       {status === 'unconfigured' && (
         <div className="text-xs text-faint-c py-6 text-center">
           Remote browser isn't set up yet.<br />Deploy remote-browser/ and set VITE_REMOTE_BROWSER_URL + VITE_REMOTE_BROWSER_TOKEN.
+        </div>
+      )}
+      {status === 'waking' && (
+        <div className="py-6 text-center px-4">
+          <Loader2 size={18} className="animate-spin mx-auto mb-2 text-faint-c" />
+          <div className="text-xs text-body-c mb-2">
+            Waking up the remote browser server… this can take up to a minute on the free tier.
+          </div>
+          <div className="w-full h-1.5 rounded-full bg-white/[0.06] overflow-hidden mb-1">
+            <div
+              className="h-full rounded-full transition-[width] duration-1000 ease-linear"
+              style={{ width: `${Math.min(100, (elapsedMs / WAKE_TIMEOUT_MS) * 100)}%`, background: 'var(--accent-bright)' }}
+            />
+          </div>
+          <div className="text-[11px] text-faint-c">{Math.round(elapsedMs / 1000)}s</div>
         </div>
       )}
       {status === 'error' && (
