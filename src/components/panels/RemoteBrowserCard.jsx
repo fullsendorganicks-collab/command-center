@@ -97,8 +97,20 @@ export default function RemoteBrowserCard({ id, sessionId, title, startUrl, onCl
       const deadline = Date.now() + WAKE_TIMEOUT_MS
       while (Date.now() < deadline) {
         if (cancelled) return false
+        // Render doesn't reject a request instantly while the instance is
+        // cold-booting — it holds the single in-flight request open and
+        // makes IT wait the full wake time (confirmed live: a plain curl
+        // GET took 53-60s and then succeeded). A short per-attempt abort
+        // (previously 5s) guarantees every attempt gets killed while the
+        // real request is still legitimately in flight and about to
+        // succeed — the loop then fires a brand new request, which also
+        // gets killed at 5s, forever, so the 90s budget expires having
+        // never let a single attempt actually complete. The per-attempt
+        // timeout must cover the remaining overall budget, not be
+        // artificially short.
+        const remaining = deadline - Date.now()
         try {
-          const res = await fetch(`${httpBase.replace(/\/$/, '')}/health`, { signal: AbortSignal.timeout(5000) })
+          const res = await fetch(`${httpBase.replace(/\/$/, '')}/health`, { signal: AbortSignal.timeout(Math.max(remaining, 1000)) })
           if (res.ok) return true
         } catch { /* not awake yet, or a transient network hiccup — keep polling */ }
         await new Promise(r => setTimeout(r, PREFLIGHT_POLL_MS))
