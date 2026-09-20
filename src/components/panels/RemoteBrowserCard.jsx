@@ -30,12 +30,20 @@ export default function RemoteBrowserCard({ id, sessionId, title, startUrl, onCl
   const imgRef = useRef(new Image())
   const [status, setStatus] = useState('connecting') // connecting | live | error | unconfigured
   const [error, setError] = useState(null)
+  // Bumped to force the connect effect to re-run without changing any of
+  // its real dependencies — the client-facing "Retry" button for when a
+  // session errors out (server was asleep, hit capacity, network blip)
+  // and simply trying again is enough, without deleting and re-dragging
+  // the whole card back in.
+  const [retryKey, setRetryKey] = useState(0)
 
   const backendUrl = import.meta.env.VITE_REMOTE_BROWSER_URL
   const token = import.meta.env.VITE_REMOTE_BROWSER_TOKEN
 
   useEffect(() => {
     if (!backendUrl || !token) { setStatus('unconfigured'); return }
+    setStatus('connecting')
+    setError(null)
 
     // The env var this reads (VITE_REMOTE_BROWSER_URL) was stored without
     // a scheme ("cc-remote-browser.onrender.com" instead of
@@ -87,7 +95,7 @@ export default function RemoteBrowserCard({ id, sessionId, title, startUrl, onCl
       try { ws.send(JSON.stringify({ type: 'close' })) } catch { /* already gone */ }
       ws.close()
     }
-  }, [backendUrl, token, sessionId, startUrl])
+  }, [backendUrl, token, sessionId, startUrl, retryKey])
 
   const send = useCallback((msg) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify(msg))
@@ -117,7 +125,16 @@ export default function RemoteBrowserCard({ id, sessionId, title, startUrl, onCl
         </div>
       )}
       {status === 'error' && (
-        <div className="text-xs py-6 text-center px-2" style={{ color: 'var(--red)' }}>{error}</div>
+        <div className="py-6 text-center px-2">
+          <div className="text-xs mb-3" style={{ color: 'var(--red)' }}>{error}</div>
+          <button
+            onClick={() => setRetryKey(k => k + 1)}
+            className="text-xs px-3 py-1.5 rounded-lg font-medium text-black"
+            style={{ background: 'var(--accent-bright)' }}
+          >
+            Retry
+          </button>
+        </div>
       )}
       {(status === 'connecting' || status === 'live') && backendUrl && (
         <div className="relative">

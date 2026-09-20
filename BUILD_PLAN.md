@@ -2,6 +2,14 @@
 
 _Written Sept 2026. Supersedes ad-hoc fixes — this is the ordered plan._
 
+**⚠️ Partially superseded — see STATUS.md first.** As of 2026-09-20,
+Overview no longer builds one bespoke card per integration (Phase 2-5
+below); most of that surface is now covered by dragging a link onto the
+dashboard, which opens a real live browser session instead. Phases 3-5c
+below still apply for anything that needs actual API read/write access
+(not just a live browser view) — read STATUS.md for what's real today
+before treating this file's phase list as current.
+
 ## Tier split (confirmed Sept 2026) — the thing that keeps this on track
 
 Pricing itself is NOT decided ($2,500 / $6k were only illustrative
