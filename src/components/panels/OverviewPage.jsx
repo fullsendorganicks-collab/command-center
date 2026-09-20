@@ -4,20 +4,20 @@ import { useWorkspace } from '../../context/WorkspaceContext'
 import { supabase } from '../../lib/supabase'
 import DashboardGrid from '../shell/DashboardGrid'
 import SystemHealthPanel from './SystemHealthPanel'
-import PropertiesPanel from './PropertiesPanel'
 import InboxPanel from './InboxPanel'
-import SocialPanel from './SocialPanel'
 import ClaudeCoworkPanel from './ClaudeCoworkPanel'
-import AddIntegrationCard from './AddIntegrationCard'
 import RemoteBrowserCard from './RemoteBrowserCard'
 
+// Per Nick's direction: Overview keeps only Claude, Email, and System
+// Status as built-in cards — everything else (Analytics, Search Console,
+// Social, any other integration) comes in by dragging a link onto the
+// dashboard instead of a bespoke built card per platform. Properties/
+// Social/Add Integration still exist as their own pages (Sites, Social in
+// the sidebar nav) — only removed from this grid, not deleted outright.
 const STATIC_CARDS = [
   { id: 'system-health', render: () => <SystemHealthPanel /> },
-  { id: 'properties', render: () => <PropertiesPanel /> },
   { id: 'inbox', render: () => <InboxPanel /> },
-  { id: 'social', render: () => <SocialPanel /> },
   { id: 'claude-cowork', render: () => <ClaudeCoworkPanel /> },
-  { id: 'add-integration', render: () => <AddIntegrationCard /> },
 ]
 
 export default function OverviewPage() {
@@ -65,6 +65,7 @@ export default function OverviewPage() {
     ...STATIC_CARDS,
     ...remoteTabs.map(tab => ({
       id: `remote-${tab.id}`,
+      onRemove: () => handleCloseRemoteTab(tab.id),
       render: () => (
         // HudCard's id prop drives both useFocus AND dnd-kit's
         // useSortable — it must exactly match the id this card was

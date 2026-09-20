@@ -37,7 +37,27 @@ export default function RemoteBrowserCard({ id, sessionId, title, startUrl, onCl
   useEffect(() => {
     if (!backendUrl || !token) { setStatus('unconfigured'); return }
 
-    const wsUrl = `${backendUrl.replace(/^http/, 'ws')}/session?token=${encodeURIComponent(token)}&sessionId=${encodeURIComponent(sessionId)}&url=${encodeURIComponent(startUrl)}`
+    // The env var this reads (VITE_REMOTE_BROWSER_URL) was stored without
+    // a scheme ("cc-remote-browser.onrender.com" instead of
+    // "https://cc-remote-browser.onrender.com"), which the old
+    // backendUrl.replace(/^http/, 'ws') silently no-opped on — producing
+    // a schemeless string that `new WebSocket()` mangled into an invalid
+    // scheme ("ttps") rather than throwing something diagnosable. Using
+    // the URL API instead handles a missing scheme, a trailing slash, or
+    // either http/https correctly no matter how the env var is set.
+    let wsUrl
+    try {
+      const withScheme = /^https?:\/\//.test(backendUrl) ? backendUrl : `https://${backendUrl}`
+      const parsed = new URL(withScheme)
+      parsed.protocol = parsed.protocol === 'http:' ? 'ws:' : 'wss:'
+      parsed.pathname = '/session'
+      parsed.search = new URLSearchParams({ token, sessionId, url: startUrl }).toString()
+      wsUrl = parsed.toString()
+    } catch (e) {
+      setStatus('error')
+      setError(`Remote browser server URL is misconfigured: ${e.message}`)
+      return
+    }
     const ws = new WebSocket(wsUrl)
     wsRef.current = ws
 

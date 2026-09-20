@@ -171,7 +171,17 @@ export default function DashboardGrid({ cards, onDropUrl }) {
               <div key={card.id} className={focusedId && focusedId !== card.id ? 'hidden md:block' : ''}>
                 <ErrorBoundary fallback={(error) => (
                   <div className="hud-card p-4 text-xs" style={{ color: 'var(--red)' }}>
-                    <div className="flex items-center gap-1.5 mb-1"><AlertTriangle size={13} /> This card crashed</div>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-1.5"><AlertTriangle size={13} /> This card crashed</div>
+                      {card.onRemove && (
+                        <button
+                          onClick={card.onRemove}
+                          className="text-[11px] px-2 py-1 rounded hover:bg-white/10 text-faint-c shrink-0"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
                     {error?.message || String(error)}
                   </div>
                 )}>
