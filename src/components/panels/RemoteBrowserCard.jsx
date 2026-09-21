@@ -173,8 +173,19 @@ export default function RemoteBrowserCard({ id, sessionId, title, startUrl, onCl
       cancelled = true
       clearInterval(tickInterval)
       if (ws) {
-        try { ws.send(JSON.stringify({ type: 'close' })) } catch { /* already gone */ }
-        ws.close()
+        // Calling .send() on a socket that's already CLOSING or CLOSED
+        // throws "WebSocket is already in CLOSING or CLOSED state" — this
+        // cleanup runs on every retry (retryKey changing re-runs the whole
+        // effect) and on unmount, by which point the socket from a failed
+        // attempt is very often already closed, so the old unconditional
+        // send() here threw on nearly every retry, visible in the console
+        // as a flood of identical errors on every attempt.
+        if (ws.readyState === WebSocket.OPEN) {
+          try { ws.send(JSON.stringify({ type: 'close' })) } catch { /* already gone */ }
+        }
+        if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+          ws.close()
+        }
       }
     }
   }, [backendUrl, token, sessionId, startUrl, retryKey])

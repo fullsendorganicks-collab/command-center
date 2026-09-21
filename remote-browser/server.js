@@ -100,14 +100,30 @@ wss.on('connection', async (ws, req) => {
     return
   }
 
+  // First-ever session on this instance launches Chromium from cold (real
+  // measured cost on free-tier CPU: well past 20s), then opens a context,
+  // a page, and navigates — all before this handler previously sent a
+  // single byte back. Confirmed live: every /session request was silently
+  // killed at ~20s with zero server-side connection-handler logs at all,
+  // meaning something upstream (Render's own proxy, most likely) was
+  // timing out an idle WebSocket that never received its first message.
+  // Sending an immediate "starting" ack the instant the socket opens gives
+  // any such idle-timeout a real message to reset against.
+  try { ws.send(JSON.stringify({ type: 'starting' })) } catch { /* client already gone */ }
+  const keepaliveInterval = setInterval(() => {
+    try { if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'keepalive' })) } catch { /* client already gone */ }
+  }, 8000)
+
   let session
   try {
     session = sessions.get(sessionId) || await createSession(sessionId, startUrl)
   } catch (e) {
+    clearInterval(keepaliveInterval)
     console.error('Failed to create session', e)
     ws.close(1011, 'Failed to start browser session')
     return
   }
+  clearInterval(keepaliveInterval)
   session.ws = ws
 
   function send(type, data) {
