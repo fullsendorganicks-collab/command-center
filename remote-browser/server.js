@@ -3,6 +3,21 @@ import { chromium } from 'playwright'
 import http from 'node:http'
 import crypto from 'node:crypto'
 
+// CDP's Input.dispatchKeyEvent needs a real Windows virtual-key code to
+// recognize non-printable keys (Backspace, Enter, Tab, arrows, Delete,
+// etc.) — sending only `key`/`code` with no windowsVirtualKeyCode is a
+// well-documented CDP gap (confirmed: Chromium's own key-handling only
+// hand-maps a fixed set of control keys by their VK code, everything else
+// falls back to relying on `text`, which printable keys have but
+// Backspace/Enter/etc never do). This is the standard US-layout table
+// (same values Playwright's own internal keyboard layer uses) for the
+// keys this app's input handling actually forwards.
+const KEY_CODES = {
+  Backspace: 8, Tab: 9, Enter: 13, Shift: 16, Control: 17, Alt: 18,
+  Escape: 27, Space: 32, ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39,
+  ArrowDown: 40, Delete: 46, Meta: 91,
+}
+
 // cc-remote-browser — a small, self-hosted remote-browser backend.
 //
 // One Chromium process stays running for the life of the server. Each
@@ -50,6 +65,31 @@ async function createSession(sessionId, startUrl) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
   const page = await context.newPage()
   const cdp = await context.newCDPSession(page)
+
+  // Sign-in flows (Google/LinkedIn/etc "Continue with X" buttons) very
+  // commonly open in a new tab/popup via target="_blank" or window.open —
+  // there was previously zero handling for this: the original page's
+  // screencast just sat there while an invisible second tab opened in the
+  // background, which looks exactly like "the page reloaded and wiped
+  // everything" from the viewer's side (the visible tab never changes,
+  // the real action is happening somewhere the user can't see or click).
+  // Only one tab is ever streamed to the client, so the fix is to redirect
+  // any popup straight back into the main tab instead of trying to stream
+  // multiple tabs: close the popup, navigate the visible page to wherever
+  // it was going.
+  context.on('page', async (popup) => {
+    try {
+      await popup.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {})
+      const popupUrl = popup.url()
+      await popup.close().catch(() => {})
+      if (popupUrl && popupUrl !== 'about:blank') {
+        await page.goto(popupUrl, { waitUntil: 'domcontentloaded' }).catch(() => {})
+      }
+    } catch (e) {
+      console.error('Failed to redirect popup into main tab', e.message)
+    }
+  })
+
   await page.goto(startUrl, { waitUntil: 'domcontentloaded' }).catch(() => {})
   const session = { context, page, cdp, ws: null }
   sessions.set(sessionId, session)
@@ -156,9 +196,32 @@ wss.on('connection', async (ws, req) => {
       } else if (msg.type === 'wheel') {
         await session.cdp.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: msg.x, y: msg.y, deltaX: msg.deltaX || 0, deltaY: msg.deltaY || 0 })
       } else if (msg.type === 'keydown') {
-        await session.cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: msg.key, code: msg.code, text: msg.text, unmodifiedText: msg.text })
+        const vk = KEY_CODES[msg.key]
+        await session.cdp.send('Input.dispatchKeyEvent', {
+          // A key with real text (a printable character) uses "keyDown",
+          // which also synthesizes the char/input event from `text`. A
+          // control key with no text — Backspace, Enter, arrows, etc —
+          // uses "rawKeyDown" instead, matching what a real browser sends
+          // and what CDP's own hand-mapped control-key handling expects.
+          // windowsVirtualKeyCode only, NOT nativeVirtualKeyCode — the
+          // latter is documented to make headless Chrome synthesize
+          // phantom repeated keydown events in a tight loop for as long
+          // as that field is present.
+          type: msg.text ? 'keyDown' : 'rawKeyDown',
+          key: msg.key,
+          code: msg.code,
+          text: msg.text,
+          unmodifiedText: msg.text,
+          ...(vk !== undefined ? { windowsVirtualKeyCode: vk } : {}),
+        })
       } else if (msg.type === 'keyup') {
-        await session.cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: msg.key, code: msg.code })
+        const vk = KEY_CODES[msg.key]
+        await session.cdp.send('Input.dispatchKeyEvent', {
+          type: 'keyUp',
+          key: msg.key,
+          code: msg.code,
+          ...(vk !== undefined ? { windowsVirtualKeyCode: vk } : {}),
+        })
       } else if (msg.type === 'navigate') {
         await session.page.goto(msg.url, { waitUntil: 'domcontentloaded' }).catch(() => {})
       } else if (msg.type === 'close') {
