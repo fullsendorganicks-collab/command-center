@@ -73,7 +73,19 @@ export default function RemoteBrowserCard({ id, sessionId, title, startUrl, onCl
     // either http/https correctly no matter how the env var is set.
     let httpBase, wsUrl
     try {
-      httpBase = /^https?:\/\//.test(backendUrl) ? backendUrl : `https://${backendUrl}`
+      // Strip ANY existing scheme-like prefix before re-adding a clean
+      // "https://" — a previous version only checked for a MISSING scheme
+      // (/^https?:\/\//) and prepended "https://" when that didn't match,
+      // which is exactly what turned a env var that was missing just its
+      // leading "h" (stored as "ttps://cc-remote-browser.onrender.com"
+      // instead of "https://...") into "https://ttps://..." — confirmed
+      // directly in the browser console (net::ERR_NAME_NOT_RESOLVED on
+      // that literal string). Stripping whatever scheme-shaped prefix is
+      // there first makes this correct no matter how the stored value is
+      // mangled, instead of only handling the one case of a fully absent
+      // scheme.
+      const withoutScheme = backendUrl.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '')
+      httpBase = `https://${withoutScheme}`
       const parsed = new URL(httpBase)
       parsed.protocol = parsed.protocol === 'http:' ? 'ws:' : 'wss:'
       parsed.pathname = '/session'
