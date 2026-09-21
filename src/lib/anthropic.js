@@ -48,6 +48,19 @@ async function callProxy(payload) {
 }
 
 /**
+ * Claude has no built-in clock — like any LLM, it only knows "now" if
+ * something in the prompt tells it, otherwise it correctly says it
+ * doesn't know rather than guessing. Prepended to every system prompt
+ * (or used as the whole one, when a caller doesn't pass its own) so the
+ * date/time is always available without every call site having to
+ * remember to include it.
+ */
+function currentDateTimeContext() {
+  const now = new Date()
+  return `Current date and time: ${now.toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' })} (${Intl.DateTimeFormat().resolvedOptions().timeZone}).`
+}
+
+/**
  * Send a conversation to Claude via the workspace's own key.
  * `messages` is [{role, content}, ...]. `system` is optional context
  * (used for briefings). `workspaceId` selects whose key/vault entry to use.
@@ -56,10 +69,11 @@ export async function sendToClaude(messages, { system, model = DEFAULT_MODEL, ma
   if (!workspaceId) {
     throw new Error('No workspace selected — cannot determine which API key to use.')
   }
+  const systemWithDate = [currentDateTimeContext(), system].filter(Boolean).join('\n\n')
   return callProxy({
     workspace_id: workspaceId,
     messages: messages.map(m => ({ role: m.role, content: m.content })),
-    system,
+    system: systemWithDate,
     model,
     max_tokens: maxTokens,
   })
