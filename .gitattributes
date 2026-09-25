@@ -1,0 +1,4 @@
+# Shell scripts must keep LF line endings — a CRLF shell script fails to
+# execute in the Linux container (this repo is worked on from Windows,
+# where git's autocrlf can silently convert these on commit/push).
+*.sh text eol=lf

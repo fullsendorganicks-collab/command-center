@@ -4,6 +4,8 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
 COPY server.js ./
+COPY entrypoint.sh ./
+RUN chmod +x entrypoint.sh
 
 ENV NODE_ENV=production
 EXPOSE 8080
@@ -13,6 +15,9 @@ EXPOSE 8080
 # be secure" — confirmed live on this exact server. Running headful under
 # Xvfb (a virtual, in-memory X11 display — nothing is actually rendered to
 # a real screen, so this works fine on a server with no GUI) presents as a
-# normal browser instead. The base image here already ships xvfb-run
-# preinstalled for exactly this purpose.
-CMD ["xvfb-run", "--auto-servernum", "--server-args=-screen 0 1280x800x24", "node", "server.js"]
+# normal browser instead. Deliberately NOT using xvfb-run here — its own
+# startup handshake is documented to hang indefinitely with zero output in
+# Docker (confirmed live: deploy went silent, no "listening" log, no
+# crash, Render's port scan found nothing). entrypoint.sh starts Xvfb
+# directly instead, avoiding that hang.
+CMD ["./entrypoint.sh"]
