@@ -49,8 +49,16 @@ const MAX_CONCURRENT_SESSIONS = Number(process.env.MAX_CONCURRENT_SESSIONS || 1)
 let browserPromise = null
 function getBrowser() {
   if (!browserPromise) {
+    // headless: false — confirmed live that Google blocks OAuth sign-in
+    // ("This browser or app may not be secure") specifically because
+    // headless=true is a known, actively-detected automation signal,
+    // independent of anything else about the request. This only works on
+    // a GUI-less server because the container's entrypoint (see
+    // Dockerfile) runs everything under xvfb-run, which gives Chromium a
+    // real (virtual, in-memory) display to render to — headless: false
+    // without that would simply fail to launch here.
     browserPromise = chromium.launch({
-      headless: true,
+      headless: false,
       args: ['--no-sandbox', '--disable-dev-shm-usage'],
     })
   }
