@@ -91,14 +91,28 @@ async function createSession(sessionId, startUrl) {
       const popupUrl = popup.url()
       await popup.close().catch(() => {})
       if (popupUrl && popupUrl !== 'about:blank') {
-        await page.goto(popupUrl, { waitUntil: 'domcontentloaded' }).catch(() => {})
+        await page.goto(popupUrl, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch((e) => {
+          console.error('Popup redirect navigation failed/timed out', e.message)
+        })
       }
     } catch (e) {
       console.error('Failed to redirect popup into main tab', e.message)
     }
   })
 
-  await page.goto(startUrl, { waitUntil: 'domcontentloaded' }).catch(() => {})
+  // A hung/never-resolving navigation (cold Chromium, slow site, or a site
+  // that never fires domcontentloaded cleanly) previously left the session
+  // silently open forever with the .catch() swallowing the eventual
+  // rejection into nothing — confirmed live: a real session sat open for
+  // 21+ minutes with zero bytes ever sent. An explicit 20s timeout makes
+  // that failure visible and reported instead of an infinite silent hang.
+  try {
+    await page.goto(startUrl, { waitUntil: 'domcontentloaded', timeout: 20000 })
+  } catch (e) {
+    console.error('Initial navigation failed/timed out', startUrl, e.message)
+    await context.close().catch(() => {})
+    throw new Error(`Failed to load ${startUrl}: ${e.message}`)
+  }
   const session = { context, page, cdp, ws: null }
   sessions.set(sessionId, session)
   return session
