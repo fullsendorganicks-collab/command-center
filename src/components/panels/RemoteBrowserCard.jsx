@@ -34,6 +34,15 @@ import HudCard from '../ui/HudCard'
 // PREFLIGHT_POLL_MS drives a visible countdown instead of a silent hang.
 const WAKE_TIMEOUT_MS = 90_000
 const PREFLIGHT_POLL_MS = 1_000
+// The server sends 'ready' the moment Page.startScreencast is confirmed —
+// normally a couple seconds after the WebSocket opens. Previously nothing
+// bounded how long a card could sit on the "connecting" spinner waiting for
+// that message: a server-side hang (createSession() never resolving, a
+// dropped 'ready' message, a crash after the socket opened but before
+// sending it) left the card spinning forever with zero feedback — visually
+// identical to "loads forever," but happening after the wake-up check
+// already succeeded, so it wasn't caught by that timeout at all.
+const CONNECT_TIMEOUT_MS = 25_000
 
 export default function RemoteBrowserCard({ id, sessionId, title, startUrl, onClose }) {
   const canvasRef = useRef(null)
@@ -144,16 +153,25 @@ export default function RemoteBrowserCard({ id, sessionId, title, startUrl, onCl
       ws = new WebSocket(wsUrl)
       wsRef.current = ws
 
+      const connectTimeout = setTimeout(() => {
+        if (cancelled) return
+        setStatus('error')
+        setError('The remote browser server accepted the connection but never became ready. It may have crashed while starting the session — try again.')
+        try { ws.close() } catch { /* already gone */ }
+      }, CONNECT_TIMEOUT_MS)
+
       ws.onopen = () => setStatus('connecting')
-      ws.onerror = () => { if (!cancelled) { setStatus('error'); setError('Could not reach the remote browser server.') } }
+      ws.onerror = () => { if (!cancelled) { clearTimeout(connectTimeout); setStatus('error'); setError('Could not reach the remote browser server.') } }
       ws.onclose = (e) => {
         if (cancelled) return
-        if (e.code === 4029) { setStatus('error'); setError('The remote browser is at capacity (free-tier limit: 1 session at a time). Close another remote tab and try again.') }
+        clearTimeout(connectTimeout)
+        if (e.code === 4029) { setStatus('error'); setError('The remote browser is at capacity. Close another remote tab and try again.') }
         else { setStatus('error'); setError('Session ended.') }
       }
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data)
         if (msg.type === 'ready') {
+          clearTimeout(connectTimeout)
           clearInterval(tickInterval)
           setStatus('live')
         } else if (msg.type === 'frame') {
