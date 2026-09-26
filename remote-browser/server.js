@@ -61,6 +61,26 @@ function getBrowser() {
       headless: false,
       args: ['--no-sandbox', '--disable-dev-shm-usage'],
     })
+    browserPromise.then((browser) => {
+      // If Chromium itself crashes (confirmed real risk: measured 179-211MB
+      // baseline RSS on a 536MB total limit even with zero sessions open —
+      // there is genuinely little headroom for concurrent headful sessions
+      // on this free tier), every session sharing this one process becomes
+      // silently dead with no browser to talk to. Without this handler that
+      // shows up to users as every open card hanging forever with no error.
+      // Resetting browserPromise lets the next request launch a fresh
+      // Chromium instead of awaiting a browser that will never respond
+      // again, and proactively killing all sessions surfaces a real error
+      // immediately instead of a silent hang.
+      browser.on('disconnected', () => {
+        console.error('Chromium disconnected/crashed — likely an OOM kill given this tier\'s RAM limit. Resetting and dropping all sessions.')
+        browserPromise = null
+        for (const [id, s] of sessions) {
+          try { if (s.ws?.readyState === s.ws?.OPEN) s.ws.close(1011, 'Browser process crashed') } catch { /* already gone */ }
+          sessions.delete(id)
+        }
+      })
+    }).catch(() => { browserPromise = null })
   }
   return browserPromise
 }
@@ -275,4 +295,19 @@ server.listen(PORT, () => {
 process.on('SIGTERM', async () => {
   for (const id of sessions.keys()) await destroySession(id)
   process.exit(0)
+})
+
+// A single bad session (a CDP call throwing outside the try/catch blocks
+// above, a Playwright internal rejection) previously had no floor — Node's
+// default behavior is to crash the entire process on an uncaught exception
+// or unhandled rejection, which would silently kill every other user's
+// open session too, not just the one that errored. Logging and continuing
+// is correct here specifically because each session is already isolated
+// (separate BrowserContext) — one session's bug has no legitimate reason
+// to take down sessions that have nothing to do with it.
+process.on('uncaughtException', (e) => {
+  console.error('Uncaught exception (server staying up):', e)
+})
+process.on('unhandledRejection', (e) => {
+  console.error('Unhandled rejection (server staying up):', e)
 })
